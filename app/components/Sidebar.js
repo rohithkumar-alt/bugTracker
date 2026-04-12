@@ -1,6 +1,6 @@
 "use client";
-import Link from '@/bugTracker/node_modules/next/link';
-import { usePathname } from '@/bugTracker/node_modules/next/navigation';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Bug, LayoutDashboard, FolderKanban, BarChart3, Users, Settings, ChevronRight, LogOut } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 

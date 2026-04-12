@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Search, Bell, MailOpen, ExternalLink, BarChart3, Settings, Folder, Bug, ChevronRight, Box } from 'lucide-react';
 import { useAuth } from './AuthProvider';
-import { useRouter, usePathname } from '@/bugTracker/node_modules/next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 
 export default function GlobalHeader({
   placeholder = "Search bugs, projects, team..."

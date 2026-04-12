@@ -17,9 +17,10 @@ export default function SettingsPage() {
 
   const handleAdd = async (category) => {
     if (!newInputs[category].trim()) return;
+    const currentList = Array.isArray(settings[category]) ? settings[category] : [];
     const updatedSettings = {
       ...settings,
-      [category]: [...settings[category], newInputs[category].trim()]
+      [category]: [...currentList, newInputs[category].trim()]
     };
 
     setSettings(updatedSettings);

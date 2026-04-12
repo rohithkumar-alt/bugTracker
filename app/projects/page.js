@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { FolderKanban, AlertCircle, CheckCircle2, Clock, ArrowRight, MoreVertical, Plus } from 'lucide-react';
-import { useRouter } from '@/bugTracker/node_modules/next/navigation';
+import { useRouter } from 'next/navigation';
 import GlobalHeader from '../components/GlobalHeader';
 
 export default function ProjectsPage() {

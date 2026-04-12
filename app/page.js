@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from './components/AuthProvider';
 import { Bug, ArrowRight, User, GitPullRequest, AlertCircle } from 'lucide-react';
-import Link from '@/bugTracker/node_modules/next/link';
+import Link from 'next/link';
 import GlobalHeader from './components/GlobalHeader';
 
 export default function DashboardPage() {

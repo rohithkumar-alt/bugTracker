@@ -102,10 +102,10 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
     const finalChanges = {};
     actualChanges.forEach(k => {
       // Map pseudo-keys or arrays to their stringified backend representations
-      if (k === 'curls') {
-        finalChanges['curl'] = JSON.stringify(tempValues[k]);
+      if (k === 'curl') {
+        finalChanges['curl'] = tempValues[k];
       } else if (k === 'githubPr') {
-        finalChanges['githubPr'] = JSON.stringify(tempValues[k]);
+        finalChanges['githubPr'] = tempValues[k];
       } else {
         finalChanges[k] = tempValues[k];
       }
@@ -205,35 +205,33 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
 
   // Helper for multi-CURL support
   const getCurlsArray = () => {
-    if (tempValues.curls !== undefined) return tempValues.curls;
-    const raw = bug.curls;
+    if (tempValues.curl !== undefined) return tempValues.curl;
+    const raw = bug.curl;
     if (Array.isArray(raw)) return raw;
     if (typeof raw === 'string' && raw.startsWith('[')) {
       try { return JSON.parse(raw); } catch(e) {}
     }
-    // Legacy support: convert single bug.curl string to an array [bug.curl]
-    if (bug.curl) return [bug.curl];
-    return [];
+    return raw ? [raw] : [];
   };
 
   const addCurl = () => {
     const current = getCurlsArray();
     const updated = [...current, ''];
-    updateTempValue('curls', updated);
+    updateTempValue('curl', updated);
     setEditingField(`curl-${updated.length - 1}`);
   };
 
   const removeCurl = (idx) => {
     const current = getCurlsArray();
     const updated = current.filter((_, i) => i !== idx);
-    updateTempValue('curls', updated);
+    updateTempValue('curl', updated);
   };
 
   const updateCurlValue = (idx, val) => {
     const current = getCurlsArray();
     const updated = [...current];
     updated[idx] = val;
-    updateTempValue('curls', updated);
+    updateTempValue('curl', updated);
   };
 
   // Helper for multi-PR support
@@ -850,36 +848,114 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
         </div>
       )}
 
-      {/* ENHANCED CURL INSPECTION OVERLAY (PRO-SIZE) */}
+      {/* ENHANCED CURL INSPECTION OVERLAY (PRO-SIZE - MATERIAL LIGHT ADAPTATION) */}
       {viewingCurl && (
-        <div className="modal-overlay" style={{ zIndex: 13000 }} onClick={() => setViewingCurl(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ width: '90vw', maxWidth: '1000px', height: '80vh', padding: '40px', borderRadius: '24px', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+        <div className="modal-overlay" style={{ zIndex: 13000, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }} onClick={() => setViewingCurl(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ 
+            width: '90vw', 
+            maxWidth: '1000px', 
+            height: '80vh', 
+            padding: '40px', 
+            borderRadius: '28px', 
+            display: 'flex', 
+            flexDirection: 'column',
+            backgroundColor: 'white',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            border: '1px solid rgba(255,255,255,0.8)',
+            animation: 'modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
               <div>
-                <h3 style={{ fontSize: '1.4rem', fontWeight: '800' }}>Historical Technical Context</h3>
-                <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '4px' }}>Double-click the code block below to instantly copy to clipboard.</p>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1e293b', letterSpacing: '-0.02em' }}>Technical Artifact Inspection</h3>
+                <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '6px', fontWeight: '500' }}>Double-click the code surface to copy this record to your clipboard. Use this for local reproduction.</p>
               </div>
-              <button onClick={() => setViewingCurl(null)} className="icon-action-btn" style={{ width: '40px', height: '40px' }}><X size={24} /></button>
+              <button 
+                onClick={() => setViewingCurl(null)} 
+                className="icon-action-btn" 
+                style={{ width: '44px', height: '44px', borderRadius: '12px', backgroundColor: '#f1f5f9', color: '#64748b', transition: 'all 0.2s' }}
+              >
+                <X size={24} />
+              </button>
             </div>
+            
             <div 
-              onDoubleClick={() => { navigator.clipboard.writeText(viewingCurl.value); showToast("Success: Copied from History!"); }}
+              onDoubleClick={() => { navigator.clipboard.writeText(viewingCurl.value); showToast("Success: Artifact Copied!"); }}
               title="Double-click to copy"
-              style={{ flex: 1, backgroundColor: '#0f172a', color: '#38bdf8', padding: '32px', borderRadius: '16px', fontSize: '1rem', fontFamily: 'monospace', whiteSpace: 'pre-wrap', wordBreak: 'break-all', overflowY: 'auto', border: '1px solid #334155', cursor: 'pointer', lineHeight: '1.6', boxShadow: 'inset 0 2px 4px 0 rgba(0,0,0,0.5)' }}>
+              style={{ 
+                flex: 1, 
+                backgroundColor: '#f8fafc', 
+                color: '#334155', 
+                padding: '36px', 
+                borderRadius: '20px', 
+                fontSize: '0.95rem', 
+                fontFamily: 'var(--font-mono)', 
+                whiteSpace: 'pre-wrap', 
+                wordBreak: 'break-all', 
+                overflowY: 'auto', 
+                border: '1px solid #e2e8f0', 
+                cursor: 'pointer', 
+                lineHeight: '1.7', 
+                boxShadow: 'inset 0 2px 4px 0 rgba(0,0,0,0.03)',
+                position: 'relative'
+              }}>
+              <div style={{ position: 'absolute', top: '16px', right: '16px', backgroundColor: 'white', padding: '4px 10px', borderRadius: '6px', fontSize: '0.65rem', fontWeight: '800', color: '#94a3b8', border: '1px solid #e2e8f0', textTransform: 'uppercase' }}>
+                RAW SOURCE
+              </div>
               {viewingCurl.value}
             </div>
-            <div style={{ marginTop: '24px', display: 'flex', gap: '16px' }}>
+
+            <div style={{ marginTop: '28px', display: 'flex', gap: '16px' }}>
               <button 
                 onClick={() => { navigator.clipboard.writeText(viewingCurl.value); showToast("CURL Copied!"); }}
-                style={{ flex: 1, padding: '16px', borderRadius: '14px', backgroundColor: 'var(--color-primary)', color: 'white', fontWeight: '700', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', fontSize: '1rem' }}>
-                <Copy size={20} /> Copy Reproduction CURL
+                style={{ 
+                  flex: 3, 
+                  padding: '18px', 
+                  borderRadius: '16px', 
+                  backgroundColor: 'var(--color-primary)', 
+                  color: 'white', 
+                  fontWeight: '750', 
+                  border: 'none', 
+                  cursor: 'pointer', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  gap: '12px', 
+                  fontSize: '1rem',
+                  boxShadow: '0 10px 15px -3px rgba(37, 99, 235, 0.3)',
+                  transition: 'transform 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <Copy size={20} /> Copy Reproduction Context
               </button>
               <button 
                 onClick={() => setViewingCurl(null)}
-                style={{ padding: '16px 32px', borderRadius: '14px', backgroundColor: '#f1f5f9', color: '#1e293b', fontWeight: '700', border: 'none', cursor: 'pointer', fontSize: '1rem' }}>
+                style={{ 
+                  flex: 1, 
+                  padding: '18px', 
+                  borderRadius: '16px', 
+                  backgroundColor: '#f1f5f9', 
+                  color: '#475569', 
+                  fontWeight: '700', 
+                  border: '1px solid #e2e8f0', 
+                  cursor: 'pointer', 
+                  fontSize: '1rem',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#e2e8f0'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+              >
                 Dismiss
               </button>
             </div>
           </div>
+          <style jsx>{`
+            @keyframes modalSlideIn {
+              from { opacity: 0; transform: translateY(20px) scale(0.98); }
+              to { opacity: 1; transform: translateY(0) scale(1); }
+            }
+          `}</style>
         </div>
       )}
     </div>

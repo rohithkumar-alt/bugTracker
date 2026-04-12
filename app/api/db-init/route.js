@@ -1,9 +1,12 @@
-import { sql } from '@vercel/postgres';
-import { NextResponse } from '@/bugTracker/node_modules/next/server';
+import { neon } from '@neondatabase/serverless';
+import { NextResponse } from 'next/server';
+
+const getSQL = () => neon(process.env.DATABASE_URL);
 
 export async function GET() {
+  const sql = getSQL();
   try {
-    // 1. Create BUGS table
+    // 1. Create BUGS table with full production schema
     await sql`
       CREATE TABLE IF NOT EXISTS bugs (
         id TEXT PRIMARY KEY,
@@ -15,6 +18,15 @@ export async function GET() {
         reporter TEXT,
         assignee TEXT DEFAULT 'Unassigned',
         project TEXT DEFAULT 'General',
+        module TEXT DEFAULT 'General',
+        steps_to_reproduce TEXT,
+        expected_result TEXT,
+        actual_result TEXT,
+        curl JSONB DEFAULT '[]'::jsonb,
+        github_pr JSONB DEFAULT '[]'::jsonb,
+        related_bugs JSONB DEFAULT '[]'::jsonb,
+        start_date TEXT,
+        end_date TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         activity_log JSONB DEFAULT '[]'::jsonb,
@@ -39,14 +51,31 @@ export async function GET() {
     // 3. Create SETTINGS table
     await sql`
       CREATE TABLE IF NOT EXISTS settings (
-        id INTEGER PRIMARY KEY CHECK (id = 1),
+        id INTEGER PRIMARY KEY,
         data JSONB NOT NULL
       );
     `;
 
-    // 4. Initialize Settings if empty
+    // 4. Migration: Ensure missing columns exist in existing tables
+    const migrations = [
+      `ALTER TABLE bugs ADD COLUMN IF NOT EXISTS module TEXT DEFAULT 'General'`,
+      `ALTER TABLE bugs ADD COLUMN IF NOT EXISTS start_date TEXT`,
+      `ALTER TABLE bugs ADD COLUMN IF NOT EXISTS end_date TEXT`,
+      `ALTER TABLE bugs ADD COLUMN IF NOT EXISTS steps_to_reproduce TEXT`,
+      `ALTER TABLE bugs ADD COLUMN IF NOT EXISTS expected_result TEXT`,
+      `ALTER TABLE bugs ADD COLUMN IF NOT EXISTS actual_result TEXT`,
+      `ALTER TABLE bugs ADD COLUMN IF NOT EXISTS curl JSONB DEFAULT '[]'::jsonb`,
+      `ALTER TABLE bugs ADD COLUMN IF NOT EXISTS github_pr JSONB DEFAULT '[]'::jsonb`,
+      `ALTER TABLE bugs ADD COLUMN IF NOT EXISTS related_bugs JSONB DEFAULT '[]'::jsonb`
+    ];
+
+    for (const query of migrations) {
+      try { await sql([query]); } catch (e) { console.warn('Migration skipped:', query, e.message); }
+    }
+
+    // 5. Initialize Settings if empty
     const settingsCheck = await sql`SELECT * FROM settings WHERE id = 1`;
-    if (settingsCheck.rowCount === 0) {
+    if (settingsCheck.length === 0) {
       const defaultSettings = {
         assignees: ["Unassigned", "Rohith", "Tapza Admin", "Engineering Team"],
         statuses: ["Open", "In Progress", "Code Review", "UAT", "Resolved", "Closed", "ReOpen"],
@@ -62,7 +91,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      message: "Database tables initialized successfully. Ready for shared cloud use."
+      message: "Database tables initialized successfully. Multi-field schema is ready."
     });
   } catch (error) {
     console.error('Database Init Error:', error);

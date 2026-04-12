@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
 import { Plus, Bug as BugIcon, Edit3, Trash2, Search, Download, Link2, ChevronDown, Check, X, Bell, ExternalLink, MailOpen } from 'lucide-react';
-import { useSearchParams } from '@/bugTracker/node_modules/next/navigation';
+import { useSearchParams } from 'next/navigation';
 import BugForm from '../components/BugForm';
 import BugDetails from '../components/BugDetails';
 import CustomDropdown from '../components/CustomDropdown';
@@ -82,7 +82,10 @@ function BugManagement() {
         if (a !== "Not Assigned" && a !== "Unassigned") names.add(a);
       });
     }
-    bugs.forEach((b) => names.add(b.reporter?.trim() ? b.reporter : 'System'));
+    bugs.forEach((b) => {
+      const reporter = b.reporter || 'System';
+      names.add(typeof reporter === 'string' ? reporter.trim() : 'System');
+    });
     return [...names].sort((a, b) => a.localeCompare(b));
   }, [bugs, settings.assignees]);
 
@@ -301,7 +304,7 @@ function BugManagement() {
   };
 
   const formatUrl = (url) => {
-    if (!url) return "#";
+    if (!url || typeof url !== 'string') return "#";
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
     return `https://${url}`;
   };
@@ -511,8 +514,10 @@ function BugManagement() {
                     {(() => {
                       let prs = [];
                       try {
-                        if (typeof bug.githubPr === 'string' && bug.githubPr.startsWith('[')) prs = JSON.parse(bug.githubPr);
-                        else if (bug.githubPr) prs = [bug.githubPr];
+                        const raw = bug.githubPr;
+                        if (Array.isArray(raw)) prs = raw;
+                        else if (typeof raw === 'string' && raw.startsWith('[')) prs = JSON.parse(raw);
+                        else if (raw) prs = [raw];
                       } catch (e) { prs = []; }
 
                       return prs.filter(Boolean).map((pr, i) => (

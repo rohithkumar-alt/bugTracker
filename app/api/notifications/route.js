@@ -1,66 +1,52 @@
-import { sql } from '@vercel/postgres';
-import { NextResponse } from '@/bugTracker/node_modules/next/server';
+import { neon } from '@neondatabase/serverless';
+import { NextResponse } from 'next/server';
+
+const getSQL = () => neon(process.env.DATABASE_URL);
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
-    try {
-        const { searchParams } = new URL(request.url);
-        const user = searchParams.get('user');
+  const sql = getSQL();
+  try {
+    const { searchParams } = new URL(request.url);
+    const user = searchParams.get('user');
+    
+    if (!user) return NextResponse.json({ notifications: [] });
 
-        let query;
-        if (user) {
-            query = await sql`
-                SELECT * FROM notifications 
-                WHERE target_user = ${user} 
-                ORDER BY created_at DESC 
-                LIMIT 50
-            `;
-        } else {
-            query = await sql`SELECT * FROM notifications ORDER BY created_at DESC LIMIT 100`;
-        }
-
-        return NextResponse.json(query.rows);
-    } catch (error) {
-        console.error("Error loading Postgres notifications", error);
-        return NextResponse.json({ error: "Failed to load notifications" }, { status: 500 });
-    }
+    const rows = await sql`
+      SELECT * FROM notifications 
+      WHERE target_user = ${user} 
+      ORDER BY created_at DESC 
+      LIMIT 20
+    `;
+    return NextResponse.json({ success: true, notifications: rows });
+  } catch (error) {
+    console.error('Neon Notification Error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
 
 export async function POST(request) {
-    try {
-        const notif = await request.json();
-        const result = await sql`
-            INSERT INTO notifications (target_user, actor, bug_id, message) 
-            VALUES (${notif.targetUser}, ${notif.actor}, ${notif.bugId}, ${notif.message})
-            RETURNING *
-        `;
-        return NextResponse.json({ success: true, notification: result.rows[0] });
-    } catch (error) {
-        console.error("Error saving Postgres notification", error);
-        return NextResponse.json({ error: "Failed to create notification" }, { status: 500 });
-    }
+  const sql = getSQL();
+  try {
+    const { target_user, actor, bug_id, message } = await request.json();
+    await sql`
+      INSERT INTO notifications (target_user, actor, bug_id, message)
+      VALUES (${target_user}, ${actor}, ${bug_id}, ${message})
+    `;
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }
 
-export async function PUT(request) {
-    try {
-        const { id, allForUser } = await request.json();
-
-        if (allForUser) {
-            await sql`
-                UPDATE notifications 
-                SET is_read = TRUE 
-                WHERE target_user = ${allForUser}
-            `;
-        } else if (id) {
-            await sql`
-                UPDATE notifications 
-                SET is_read = TRUE 
-                WHERE id = ${id}
-            `;
-        }
-
-        return NextResponse.json({ success: true });
-    } catch (error) {
-        console.error("Error updating Postgres notifications", error);
-        return NextResponse.json({ error: "Failed to update notifications" }, { status: 500 });
-    }
+export async function PATCH(request) {
+  const sql = getSQL();
+  try {
+    const { id } = await request.json();
+    await sql`UPDATE notifications SET is_read = TRUE WHERE id = ${id}`;
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 }

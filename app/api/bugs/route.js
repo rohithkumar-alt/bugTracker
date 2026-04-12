@@ -1,12 +1,54 @@
-import { sql } from '@vercel/postgres';
-import { NextResponse } from '@/bugTracker/node_modules/next/server';
+import { neon } from '@neondatabase/serverless';
+import { NextResponse } from 'next/server';
 
-// Helper to log changes (same logic as before)
+const getSQL = () => {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error("DATABASE_URL is not defined in environment variables.");
+  }
+  return neon(url);
+};
+
+function transformBugRow(row) {
+  if (!row) return null;
+  const parseArray = (val) => {
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'string' && val.startsWith('[')) {
+      try { return JSON.parse(val); } catch { return []; }
+    }
+    return val ? [val] : [];
+  };
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    stepsToReproduce: row.steps_to_reproduce || '',
+    expectedResult: row.expected_result || '',
+    actualResult: row.actual_result || '',
+    status: row.status,
+    priority: row.priority,
+    severity: row.severity,
+    reporter: row.reporter,
+    assignee: row.assignee,
+    project: row.project,
+    module: row.module || 'General',
+    startDate: row.start_date || '',
+    endDate: row.end_date || '',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    activityLog: row.activity_log || [],
+    comments: row.comments || [],
+    curl: parseArray(row.curl),
+    githubPr: parseArray(row.github_pr),
+    relatedBugs: parseArray(row.related_bugs),
+    metadata: row.metadata || {}
+  };
+}
+
 function getChangeLogs(oldBug, newBug) {
   const logs = [];
   const timestamp = new Date().toISOString();
   const actor = newBug.updatedBy || newBug.reporter || 'System';
-
   const fieldsToTrack = [
     { key: 'status', label: 'Status' },
     { key: 'assignee', label: 'Assignee' },
@@ -14,182 +56,148 @@ function getChangeLogs(oldBug, newBug) {
     { key: 'severity', label: 'Severity' },
     { key: 'project', label: 'Project' },
     { key: 'title', label: 'Title' },
+    { key: 'module', label: 'Module' },
     { key: 'startDate', label: 'Start Date' },
     { key: 'endDate', label: 'End Date' },
-    { key: 'curl', label: 'CURL Command', isTechnical: true },
-    { key: 'githubPr', label: 'GitHub PR' }
+    { key: 'description', label: 'Description' },
+    { key: 'stepsToReproduce', label: 'Steps to Reproduce' },
+    { key: 'expectedResult', label: 'Expected Result' },
+    { key: 'actualResult', label: 'Actual Result' },
+    { key: 'curl', label: 'Technical Context', isTechnical: true, type: 'curl' },
+    { key: 'githubPr', label: 'GitHub PR', isTechnical: true },
+    { key: 'relatedBugs', label: 'Related Bugs', isTechnical: true }
   ];
-
   fieldsToTrack.forEach(field => {
+    if (newBug[field.key] === undefined) return;
     const oldValue = oldBug[field.key];
     const newValue = newBug[field.key];
-
-    if (oldValue !== newValue) {
+    const isDifferent = field.isTechnical 
+      ? JSON.stringify(oldValue || []) !== JSON.stringify(newValue || [])
+      : (oldValue || '') !== (newValue || '');
+    if (isDifferent) {
       const logEntry = {
         date: timestamp,
-        action: `${field.label} updated by ${actor}`
+        action: `${field.label} updated by ${actor}`,
+        fieldKey: field.key,
+        from: field.isTechnical ? '—' : (oldValue || '—'),
+        to: field.isTechnical ? '—' : (newValue || '—')
       };
-
-      if (field.isTechnical) {
+      if (field.type === 'curl') {
         logEntry.type = 'curl';
-        logEntry.details = newValue;
-      } else {
-        logEntry.fieldKey = field.key;
-        logEntry.from = oldValue || '—';
-        logEntry.to = newValue || '—';
+        logEntry.details = Array.isArray(newValue) ? newValue[newValue.length - 1] : newValue;
       }
       logs.push(logEntry);
     }
   });
-
-  const textFields = [
-    { key: 'description', label: 'Description' },
-    { key: 'stepsToReproduce', label: 'Steps to Reproduce' },
-    { key: 'expectedResult', label: 'Expected Result' },
-    { key: 'actualResult', label: 'Actual Result' }
-  ];
-
-  textFields.forEach(field => {
-    if (oldBug[field.key] !== newBug[field.key]) {
-      logs.push({
-        date: timestamp,
-        action: `${field.label} updated by ${actor}`,
-        fieldKey: field.key,
-        from: oldBug[field.key] || '—',
-        to: newBug[field.key] || '—'
-      });
-    }
-  });
-
   return logs;
 }
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const sql = getSQL();
   try {
-    const { rows } = await sql`SELECT * FROM bugs ORDER BY created_at DESC`;
-    // Transform column names back to match UI camelCase requirements if needed
-    // The current UI uses: id, title, status, priority, severity, reporter, assignee, project, createdAt, updatedAt, activityLog, comments
-    const transformedBugs = rows.map(row => ({
-      id: row.id,
-      title: row.title,
-      description: row.description,
-      status: row.status,
-      priority: row.priority,
-      severity: row.severity,
-      reporter: row.reporter,
-      assignee: row.assignee,
-      project: row.project,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      activityLog: JSON.stringify(row.activity_log || []),
-      comments: JSON.stringify(row.comments || []),
-      metadata: row.metadata || {}
-    }));
-    return NextResponse.json({ success: true, bugs: transformedBugs });
+    const rows = await sql`SELECT * FROM bugs ORDER BY created_at DESC`;
+    return NextResponse.json({ success: true, bugs: rows.map(transformBugRow) });
   } catch (error) {
-    console.error("Error loading Postgres bugs", error);
-    return NextResponse.json({ error: "Failed to load database" }, { status: 500 });
+    console.error('Bugs API GET Error:', error);
+    return NextResponse.json({ error: 'Failed to load database', details: error.message }, { status: 500 });
   }
 }
 
 export async function POST(request) {
+  const sql = getSQL();
   try {
     const newBug = await request.json();
-
-    // Generate ID (BUG-N format) within a transaction logic
-    const { rows: maxRows } = await sql`SELECT MAX(id) as max_id FROM bugs`;
-    let nextIdNum = 1;
-    if (maxRows[0].max_id) {
-      const match = maxRows[0].max_id.match(/(\d+)$/);
-      if (match) nextIdNum = parseInt(match[1]) + 1;
-    }
-    const bugId = `BUG-${nextIdNum}`;
-
     const timestamp = new Date().toISOString();
-    const initialLog = [{
-      date: timestamp,
-      action: `Bug reported by ${newBug.reporter || 'Not Assigned'}`
-    }];
-
+    const maxRows = await sql`SELECT id FROM bugs WHERE id LIKE 'BUG-%'`;
+    let nextIdNum = 1;
+    if (maxRows.length > 0) {
+      const numbers = maxRows.map(r => {
+        const m = r.id.match(/\d+/);
+        return m ? parseInt(m[0]) : 0;
+      });
+      nextIdNum = Math.max(...numbers) + 1;
+    }
+    const bugId = 'BUG-' + nextIdNum;
+    const initialLog = [{ date: timestamp, action: 'Bug reported by ' + (newBug.reporter || 'System') }];
     const result = await sql`
       INSERT INTO bugs (
         id, title, description, status, priority, severity, 
-        reporter, assignee, project, created_at, updated_at, 
-        activity_log, comments
+        reporter, assignee, project, module, start_date, end_date, 
+        steps_to_reproduce, expected_result, actual_result, 
+        curl, github_pr, related_bugs,
+        created_at, updated_at, activity_log, comments
       ) VALUES (
         ${bugId}, ${newBug.title}, ${newBug.description}, ${newBug.status || 'Open'}, 
         ${newBug.priority || 'Medium'}, ${newBug.severity || 'Medium'}, 
         ${newBug.reporter || 'System'}, ${newBug.assignee || 'Unassigned'}, 
-        ${newBug.project || 'General'}, ${timestamp}, ${timestamp}, 
+        ${newBug.project || 'General'}, ${newBug.module || 'General'}, 
+        ${newBug.startDate || ''}, ${newBug.endDate || ''}, 
+        ${newBug.stepsToReproduce || ''}, ${newBug.expectedResult || ''}, ${newBug.actualResult || ''},
+        ${JSON.stringify(newBug.curl || [])}, ${JSON.stringify(newBug.githubPr || [])}, ${JSON.stringify(newBug.relatedBugs || [])},
+        ${timestamp}, ${timestamp}, 
         ${JSON.stringify(initialLog)}, ${JSON.stringify([])}
       ) RETURNING *
     `;
-
-    return NextResponse.json({ success: true, bug: result.rows[0] });
+    return NextResponse.json({ success: true, bug: transformBugRow(result[0]) });
   } catch (error) {
-    console.error("Error creating Postgres bug", error);
-    return NextResponse.json({ error: "Failed to create bug" }, { status: 500 });
+    console.error('Bugs API POST Error:', error);
+    return NextResponse.json({ error: 'Failed to create bug', details: error.message }, { status: 500 });
   }
 }
 
 export async function PUT(request) {
+  const sql = getSQL();
   try {
-    const updatedBug = await request.json();
-
-    // 1. Fetch current bug state
-    const { rows } = await sql`SELECT * FROM bugs WHERE id = ${updatedBug.id}`;
-    if (rows.length === 0) return NextResponse.json({ error: "Bug not found" }, { status: 404 });
-
-    const oldBug = rows[0];
-    // Map DB underscore to JSON camelCase for internal log comparison
-    const oldBugMapped = {
-      ...oldBug,
-      activityLog: oldBug.activity_log,
-      comments: oldBug.comments
-    };
-
-    // 2. Generate Change Logs
-    let logs = Array.isArray(oldBug.activity_log) ? oldBug.activity_log : [];
-    const newLogs = getChangeLogs(oldBugMapped, updatedBug);
-    const finalLogs = [...logs, ...newLogs];
-
-    // 3. Update in DB
+    const updatedBugPayload = await request.json();
     const timestamp = new Date().toISOString();
-    await sql`
+    const currentRows = await sql`SELECT * FROM bugs WHERE id = ${updatedBugPayload.id}`;
+    if (currentRows.length === 0) return NextResponse.json({ error: 'Bug not found' }, { status: 404 });
+    const oldBug = transformBugRow(currentRows[0]);
+    const mergedBug = { ...oldBug, ...updatedBugPayload };
+    const finalLogs = [...(oldBug.activityLog || []), ...getChangeLogs(oldBug, updatedBugPayload)];
+    const result = await sql`
       UPDATE bugs SET
-        title = ${updatedBug.title},
-        description = ${updatedBug.description},
-        status = ${updatedBug.status},
-        priority = ${updatedBug.priority},
-        severity = ${updatedBug.severity},
-        assignee = ${updatedBug.assignee},
-        project = ${updatedBug.project},
+        title = ${mergedBug.title},
+        description = ${mergedBug.description},
+        status = ${mergedBug.status},
+        priority = ${mergedBug.priority},
+        severity = ${mergedBug.severity},
+        assignee = ${mergedBug.assignee},
+        project = ${mergedBug.project},
+        module = ${mergedBug.module || 'General'},
+        start_date = ${mergedBug.startDate || ''},
+        end_date = ${mergedBug.endDate || ''},
+        steps_to_reproduce = ${mergedBug.stepsToReproduce || ''},
+        expected_result = ${mergedBug.expectedResult || ''},
+        actual_result = ${mergedBug.actualResult || ''},
+        curl = ${JSON.stringify(mergedBug.curl || [])},
+        github_pr = ${JSON.stringify(mergedBug.githubPr || [])},
+        related_bugs = ${JSON.stringify(mergedBug.relatedBugs || [])},
         updated_at = ${timestamp},
         activity_log = ${JSON.stringify(finalLogs)},
-        comments = ${typeof updatedBug.comments === 'string' ? updatedBug.comments : JSON.stringify(updatedBug.comments || [])}
-      WHERE id = ${updatedBug.id}
+        comments = ${typeof mergedBug.comments === 'string' ? mergedBug.comments : JSON.stringify(mergedBug.comments || [])}
+      WHERE id = ${mergedBug.id}
+      RETURNING *
     `;
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, bug: transformBugRow(result[0]) });
   } catch (error) {
-    console.error("Error updating Postgres bug", error);
-    return NextResponse.json({ error: "Failed to update bug" }, { status: 500 });
+    console.error('Bugs API PUT Error:', error);
+    return NextResponse.json({ error: 'Failed to update bug', details: error.message }, { status: 500 });
   }
 }
 
 export async function DELETE(request) {
+  const sql = getSQL();
   try {
     const { id, ids } = await request.json();
     const targetIds = Array.isArray(ids) ? ids : (id ? [id] : []);
-
-    if (targetIds.length === 0) return NextResponse.json({ error: "No IDs provided" }, { status: 400 });
-
-    const result = await sql`DELETE FROM bugs WHERE id = ANY(${targetIds})`;
-    return NextResponse.json({ success: true, deletedCount: result.rowCount });
+    if (targetIds.length === 0) return NextResponse.json({ error: 'No IDs provided' }, { status: 400 });
+    await sql`DELETE FROM bugs WHERE id = ANY(${targetIds})`;
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting Postgres bugs", error);
-    return NextResponse.json({ error: "Failed to delete from database" }, { status: 500 });
+    console.error('Bugs API DELETE Error:', error);
+    return NextResponse.json({ error: 'Failed to delete', details: error.message }, { status: 500 });
   }
 }

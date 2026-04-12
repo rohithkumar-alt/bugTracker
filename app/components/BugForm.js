@@ -68,7 +68,7 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
         if (typeof initialData.curl === 'string' && initialData.curl.startsWith('[')) {
           curlArray = JSON.parse(initialData.curl);
         } else if (initialData.curl) {
-          curlArray = [initialData.curl]; 
+          curlArray = Array.isArray(initialData.curl) ? initialData.curl : [initialData.curl]; 
         }
 
         if (typeof initialData.relatedBugs === 'string' && initialData.relatedBugs.startsWith('[')) {
@@ -80,7 +80,7 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
         if (typeof initialData.githubPr === 'string' && initialData.githubPr.startsWith('[')) {
           githubPrArray = JSON.parse(initialData.githubPr);
         } else if (initialData.githubPr) {
-          githubPrArray = [initialData.githubPr]; 
+          githubPrArray = Array.isArray(initialData.githubPr) ? initialData.githubPr : [initialData.githubPr]; 
         }
       } catch (e) {
         curlArray = initialData.curl ? [initialData.curl] : [];
@@ -180,10 +180,10 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
     const finalData = {
       ...formData,
       reporter: isNew ? currentReporter : formData.reporter,
-      curl: JSON.stringify(formData.curl), 
-      relatedBugs: JSON.stringify(formData.relatedBugs),
-      githubPr: JSON.stringify(formData.githubPr),
-      comments: JSON.stringify(formData.comments),
+      curl: formData.curl, 
+      relatedBugs: formData.relatedBugs,
+      githubPr: formData.githubPr,
+      comments: formData.comments,
       createdAt: isNew ? new Date().toISOString() : formData.createdAt
     };
 
@@ -513,15 +513,29 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
         </form>
       </div>
 
-      {/* CURL EDITOR MODAL */}
+      {/* CURL EDITOR MODAL (MATERIAL LIGHT ADAPTATION) */}
       {editingCurl !== null && (
-        <div className="modal-overlay" style={{ zIndex: 1100, backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={() => setEditingCurl(null)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', width: '95%', padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: '700' }}>
-                {formData.curl[editingCurl.index] ? 'Edit CURL Command' : 'Add CURL Command'}
-              </h3>
-              <button onClick={() => setEditingCurl(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
+        <div className="modal-overlay" style={{ zIndex: 11000, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }} onClick={() => setEditingCurl(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ 
+            maxWidth: '900px', 
+            width: '95%', 
+            padding: '40px', 
+            borderRadius: '28px',
+            backgroundColor: 'white',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            animation: 'modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#1e293b' }}>
+                  {formData.curl[editingCurl.index] ? 'Edit Technical Sequence' : 'Add Technical Sequence'}
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '4px' }}>Input your CURL command or technical reproduction script below.</p>
+              </div>
+              <button 
+                onClick={() => setEditingCurl(null)} 
+                style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#f1f5f9', border: 'none', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
                 <X size={20} />
               </button>
             </div>
@@ -529,23 +543,34 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
               autoFocus
               style={{
                 width: '100%',
-                minHeight: '450px',
-                padding: '16px',
-                borderRadius: '8px',
-                border: '1px solid var(--color-border)',
-                fontFamily: 'monospace',
-                fontSize: '0.85rem',
+                minHeight: '400px',
+                padding: '24px',
+                borderRadius: '20px',
+                border: '1px solid #e2e8f0',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '0.9rem',
                 backgroundColor: '#f8fafc',
-                lineHeight: '1.6'
+                color: '#334155',
+                lineHeight: '1.7',
+                outline: 'none',
+                boxShadow: 'inset 0 2px 4px 0 rgba(0,0,0,0.02)',
+                resize: 'none'
               }}
-              placeholder="Paste your CURL command here..."
+              placeholder="Paste your CURL command or CLI reproduction snippet here..."
               value={editingCurl.value}
               onChange={(e) => setEditingCurl({ ...editingCurl, value: e.target.value })}
             />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '20px' }}>
-              <button className="btn btn-outline" onClick={() => setEditingCurl(null)}>Cancel</button>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '14px', marginTop: '32px' }}>
+              <button 
+                className="btn btn-outline" 
+                onClick={() => setEditingCurl(null)}
+                style={{ padding: '12px 24px', borderRadius: '12px', fontWeight: '700' }}
+              >
+                Discard
+              </button>
               <button
                 className="btn btn-primary"
+                style={{ padding: '12px 32px', borderRadius: '12px', fontWeight: '700', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)' }}
                 onClick={() => {
                   const newList = [...formData.curl];
                   if (editingCurl.index < newList.length) {
@@ -557,10 +582,16 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
                   setEditingCurl(null);
                 }}
               >
-                Apply Changes
+                Apply Sequence
               </button>
             </div>
           </div>
+          <style jsx>{`
+            @keyframes modalSlideIn {
+              from { opacity: 0; transform: translateY(20px) scale(0.98); }
+              to { opacity: 1; transform: translateY(0) scale(1); }
+            }
+          `}</style>
         </div>
       )}
 
