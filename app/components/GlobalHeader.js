@@ -7,7 +7,7 @@ import { useRouter, usePathname } from 'next/navigation';
 export default function GlobalHeader({
   placeholder = "Search bugs, projects, team..."
 }) {
-  const { currentReporter, notifications, unreadCount, fetchNotifications, getInitials, globalSearchQuery, setGlobalSearchQuery, globalBugs, globalSettings } = useAuth();
+  const { currentReporter, notifications, unreadCount, fetchNotifications, getInitials, getAvatar, globalSearchQuery, setGlobalSearchQuery, globalBugs, globalSettings } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const router = useRouter();
@@ -241,7 +241,21 @@ export default function GlobalHeader({
               ) : (
                 notifications.map(n => (
                   <div key={n.id} onClick={() => handleNotificationClick(n)} style={{ padding: '16px 20px', borderBottom: '1px solid #f8fafc', cursor: 'pointer', transition: 'all 0.2s', backgroundColor: n.isRead ? 'transparent' : 'rgba(37, 99, 235, 0.03)', display: 'flex', gap: '14px' }}>
-                    <div className="avatar" style={{ width: '32px', height: '32px', fontSize: '0.75rem', flexShrink: 0, marginTop: '2px', backgroundColor: '#8b5cf6' }}>{getInitials(n.actor)}</div>
+                    <div 
+                      className="avatar" 
+                      style={{ 
+                        width: '32px', 
+                        height: '32px', 
+                        flexShrink: 0, 
+                        marginTop: '2px', 
+                        backgroundColor: 'white',
+                        backgroundImage: `url(${getAvatar(n.actor)})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        border: '1px solid #e2e8f0'
+                      }}
+                    >
+                    </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                         <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#1e293b' }}>{n.actor} tagged you</span>

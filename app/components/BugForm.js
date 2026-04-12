@@ -152,7 +152,8 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
   const validateForm = () => {
     const isTitleEmpty = !formData.title.trim();
     const isDescEmpty = !formData.description.trim();
-    const isAssigneeEmpty = !formData.assignee || formData.assignee === 'Not Assigned';
+    const isAssigneeEmpty = !formData.assignee || 
+      (typeof formData.assignee === 'object' ? formData.assignee.name : formData.assignee) === 'Not Assigned';
 
     if (isTitleEmpty && isDescEmpty) {
       showToast("Title and Description are required!");

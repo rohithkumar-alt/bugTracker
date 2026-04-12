@@ -6,7 +6,7 @@ import { useAuth } from './AuthProvider';
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { currentReporter, getInitials, handleSwitchUser } = useAuth();
+  const { currentReporter, getAvatar, handleSwitchUser } = useAuth();
 
   if (!currentReporter) return null;
 
@@ -41,8 +41,19 @@ export default function Sidebar() {
 
       <div className="sidebar-footer" style={{ padding: '12px' }}>
         <div className="user-profile" style={{ border: '1px solid var(--color-border-light)', padding: '10px 8px' }}>
-          <div className="avatar" style={{ width: '34px', height: '34px', fontSize: '0.85rem', fontWeight: '800', backgroundColor: 'var(--color-primary)', color: 'white' }}>
-            {getInitials(currentReporter)}
+          <div 
+            className="avatar" 
+            style={{ 
+              width: '38px', 
+              height: '38px', 
+              backgroundColor: 'white',
+              backgroundImage: `url(${getAvatar(currentReporter)})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              border: '2px solid white',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+            }}
+          >
           </div>
           <div style={{ flex: 1, marginLeft: '8px' }}>
             <div style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--color-text-main)', display: 'flex', alignItems: 'center', gap: '4px' }}>

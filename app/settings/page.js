@@ -21,7 +21,12 @@ export default function SettingsPage() {
     if (!value) return;
     
     // Check for duplicates
-    if ((settings[category] || []).includes(value)) {
+    const isDuplicate = (settings[category] || []).some(item => {
+      const existingName = typeof item === 'object' ? item.name : item;
+      return existingName === value;
+    });
+
+    if (isDuplicate) {
       alert(`This ${category.slice(0, -1)} already exists!`);
       return;
     }
@@ -50,7 +55,8 @@ export default function SettingsPage() {
     const itemToDelete = settings[category][index];
     
     // Safety guard for system-reserved profiles
-    if (category === 'assignees' && (itemToDelete === 'Unassigned' || itemToDelete === 'Not Assigned')) {
+    const itemName = typeof itemToDelete === 'object' ? itemToDelete.name : itemToDelete;
+    if (category === 'assignees' && (itemName === 'Unassigned' || itemName === 'Not Assigned')) {
       alert("System reserved profiles cannot be deleted.");
       return;
     }
@@ -127,7 +133,8 @@ export default function SettingsPage() {
 
       <div style={{ flex: 1, overflowY: 'auto', minHeight: '120px', maxHeight: '350px' }}>
         {settings[category]?.map((item, index) => {
-          const isReserved = category === 'assignees' && (item === 'Unassigned' || item === 'Not Assigned');
+          const itemName = typeof item === 'object' ? item.name : item;
+          const isReserved = category === 'assignees' && (itemName === 'Unassigned' || itemName === 'Not Assigned');
           
           return (
             <div key={index} style={{
@@ -138,7 +145,7 @@ export default function SettingsPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <ChevronRight size={10} color="#cbd5e1" />
                 <span style={{ fontSize: '0.9rem', color: isReserved ? '#94a3b8' : '#334155', fontWeight: '600' }}>
-                    {item} {isReserved && <span style={{fontSize: '0.65rem', fontWeight: '800', backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', marginLeft: '4px'}}>SYSTEM</span>}
+                    {itemName} {isReserved && <span style={{fontSize: '0.65rem', fontWeight: '800', backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '4px', marginLeft: '4px'}}>SYSTEM</span>}
                 </span>
               </div>
               {!isReserved && (

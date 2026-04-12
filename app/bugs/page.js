@@ -84,7 +84,8 @@ function BugManagement() {
     const names = new Set();
     if (settings.assignees) {
       settings.assignees.forEach(a => {
-        if (a !== "Not Assigned" && a !== "Unassigned") names.add(a);
+        const name = typeof a === 'object' ? a.name : a;
+        if (name && name !== "Not Assigned" && name !== "Unassigned") names.add(name);
       });
     }
     bugs.forEach((b) => {

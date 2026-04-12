@@ -36,12 +36,8 @@ const CustomDropdown = ({
   };
 
   const getTriggerLabel = () => {
-    if (isMulti) {
-      if (!Array.isArray(selected) || selected.length === 0) return label || placeholder;
-      if (selected.length === 1) return selected[0];
-      return `${label || 'Selected'} (${selected.length})`;
-    }
-    return selected || placeholder;
+    const val = isMulti ? (selected?.[0] || placeholder) : (selected || placeholder);
+    return typeof val === 'object' ? val.name : val;
   };
 
   return (
@@ -120,12 +116,14 @@ const CustomDropdown = ({
           )}
 
           {options?.map(opt => {
-            const isSubItem = opt.startsWith(' -') || opt.startsWith(' •');
-            const displayText = isSubItem ? opt.substring(2) : opt;
+            const isObject = typeof opt === 'object';
+            const optValue = isObject ? opt.name : opt;
+            const isSubItem = !isObject && (opt.startsWith(' -') || opt.startsWith(' •'));
+            const displayText = isSubItem ? opt.substring(2) : optValue;
             
             return (
               <div
-                key={opt}
+                key={optValue}
                 className={`custom-dropdown-item ${isSelected(opt) ? 'selected' : ''}`}
                 onClick={() => handleSelect(opt)}
                 style={itemStyle(isSelected(opt), isSubItem)}
