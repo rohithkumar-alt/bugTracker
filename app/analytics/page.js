@@ -90,8 +90,8 @@ const DonutChart = ({ data, centerText, centerSubtext }) => {
           </g>
         </svg>
         <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-          <div style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '600', marginBottom: '4px' }}>{centerSubtext}</div>
-          <div style={{ fontSize: '2.5rem', fontWeight: '800', color: '#0f172a', lineHeight: 1 }}>{centerText}</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', fontWeight: '600', marginBottom: '4px' }}>{centerSubtext}</div>
+          <div style={{ fontSize: '2.5rem', fontWeight: '800', color: 'var(--color-text-main)', lineHeight: 1 }}>{centerText}</div>
         </div>
       </div>
 
@@ -113,7 +113,7 @@ const DonutChart = ({ data, centerText, centerSubtext }) => {
         }}>
           <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: tooltip.data.color }}></div>
           <div style={{ color: 'white', fontSize: '0.85rem', fontWeight: '600' }}>
-            {tooltip.data.name}: <span style={{ color: '#94a3b8', marginLeft: '4px' }}>{tooltip.data.value} {tooltip.data.value === 1 ? 'Bugs' : 'Bugs'}</span>
+            {tooltip.data.name}: <span style={{ color: 'var(--color-text-light)', marginLeft: '4px' }}>{tooltip.data.value} {tooltip.data.value === 1 ? 'Bugs' : 'Bugs'}</span>
           </div>
         </div>
       )}
@@ -128,7 +128,7 @@ const PriorityTrendChart = ({ bugs }) => {
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
   if (!bugs || bugs.length === 0) return (
-    <div className="card" style={{ padding: '32px', backgroundColor: 'white', borderRadius: '24px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '0.9rem' }}>
+    <div className="card" style={{ padding: '32px', backgroundColor: 'var(--color-bg-surface)', borderRadius: '24px', border: '1px solid var(--color-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-light)', fontSize: '0.9rem' }}>
       No bug data to display.
     </div>
   );
@@ -310,17 +310,17 @@ const PriorityTrendChart = ({ bugs }) => {
       style={{ 
         position: 'relative', 
         padding: '20px 24px', 
-        backgroundColor: 'white', 
+        backgroundColor: 'var(--color-bg-surface)', 
         borderRadius: '24px', 
-        border: '1px solid #e2e8f0', 
+        border: '1px solid var(--color-border)', 
         boxShadow: '0 4px 20px -4px rgba(0,0,0,0.06)', 
         display: 'flex', 
         flexDirection: 'column' 
       }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
         <div>
-          <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Priority Timeline</div>
-          <p style={{ color: '#94a3b8', fontSize: '0.8rem', marginTop: '4px' }}>Active (unresolved) bugs across all severity tiers.</p>
+          <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Priority Timeline</div>
+          <p style={{ color: 'var(--color-text-light)', fontSize: '0.8rem', marginTop: '4px' }}>Active (unresolved) bugs across all severity tiers.</p>
         </div>
       </div>
 
@@ -329,13 +329,13 @@ const PriorityTrendChart = ({ bugs }) => {
       {hoverBucketIdx !== null && tooltipData.length > 0 && (
         <div style={{
           position: 'fixed', left: tooltipPos.x + 16, top: tooltipPos.y - 10,
-          backgroundColor: 'rgba(255, 255, 255, 0.98)', color: '#1e293b', padding: '16px', borderRadius: '20px',
+          backgroundColor: 'var(--color-bg-surface)', color: 'var(--color-text-main)', padding: '16px', borderRadius: '20px',
           fontSize: '0.85rem', pointerEvents: 'none', zIndex: 1000, 
           boxShadow: '0 20px 40px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0,0,0,0.05)',
-          backdropFilter: 'blur(12px)', border: '1px solid rgba(255,255,255,0.8)',
+          backdropFilter: 'blur(12px)', border: '1px solid var(--color-border)',
           minWidth: '240px', display: 'flex', flexDirection: 'column', gap: '16px'
         }}>
-          <div style={{ paddingBottom: '10px', borderBottom: '1px solid #f1f5f9', fontWeight: '800', fontSize: '0.95rem', color: '#0f172a' }}>
+          <div style={{ paddingBottom: '10px', borderBottom: '1px solid var(--color-border-light)', fontWeight: '800', fontSize: '0.95rem', color: 'var(--color-text-main)' }}>
             {hoveredBucket.label} Baseline
           </div>
           
@@ -348,19 +348,19 @@ const PriorityTrendChart = ({ bugs }) => {
                     {section.priority}
                   </span>
                 </div>
-                <span style={{ fontSize: '0.85rem', fontWeight: '900', color: '#0f172a' }}>{section.total} <span style={{ fontWeight: '500', color: '#64748b' }}>Active</span></span>
+                <span style={{ fontSize: '0.85rem', fontWeight: '900', color: 'var(--color-text-main)' }}>{section.total} <span style={{ fontWeight: '500', color: 'var(--color-text-muted)' }}>Active</span></span>
               </div>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {section.rows.map(row => (
-                  <div key={row.proj} style={{ display: 'flex', justifyContent: 'space-between', color: '#475569', fontSize: '0.85rem' }}>
+                  <div key={row.proj} style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
                     <span style={{ fontWeight: '500' }}>{row.proj}</span>
-                    <span style={{ fontWeight: '800', color: '#1e293b' }}>{row.count}</span>
+                    <span style={{ fontWeight: '800', color: 'var(--color-text-main)' }}>{row.count}</span>
                   </div>
                 ))}
               </div>
               
-              {idx < tooltipData.length - 1 && <div style={{ height: '1px', backgroundColor: '#f1f5f9', marginTop: '8px' }} />}
+              {idx < tooltipData.length - 1 && <div style={{ height: '1px', backgroundColor: 'var(--color-bg-body)', marginTop: '8px' }} />}
             </div>
           ))}
         </div>
@@ -467,6 +467,7 @@ export default function AnalyticsPage() {
     if (!silent) setLoading(true);
     try {
       const res = await fetch('/api/bugs', { cache: 'no-store' });
+      if (!res.ok) { setBugs([]); return; }
       const data = await res.json();
       const bugsArr = Array.isArray(data) ? data : (data.bugs || []);
       setBugs(bugsArr);
@@ -604,37 +605,37 @@ export default function AnalyticsPage() {
 
       {/* Global Key Metrics */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', marginBottom: '16px' }}>
-        <div className="card stat-card" style={{ padding: '16px', backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '16px' }}>
+        <div className="card stat-card" style={{ padding: '16px', backgroundColor: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'color-mix(in srgb, var(--color-primary) 8%, var(--color-bg-surface))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
               <BarChart3 size={20} />
             </div>
-            <div style={{ padding: '4px 8px', backgroundColor: '#f0f9ff', color: '#0ea5e9', fontSize: '0.65rem', fontWeight: '600', borderRadius: '6px', height: 'fit-content' }}>+12% vs last mo</div>
+            <div style={{ padding: '4px 8px', backgroundColor: 'var(--color-bg-body)', color: '#0ea5e9', fontSize: '0.65rem', fontWeight: '600', borderRadius: '6px', height: 'fit-content' }}>+12% vs last mo</div>
           </div>
-          <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Total Bug Reports</div>
-          <div style={{ fontSize: '1.8rem', fontWeight: '600', color: '#0f172a' }}>{stats.total}</div>
+          <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Total Bug Reports</div>
+          <div style={{ fontSize: '1.8rem', fontWeight: '600', color: 'var(--color-text-main)' }}>{stats.total}</div>
         </div>
 
-        <div className="card stat-card" style={{ padding: '16px', backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '16px' }}>
+        <div className="card stat-card" style={{ padding: '16px', backgroundColor: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22c55e' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'color-mix(in srgb, #22c55e 12%, var(--color-bg-surface))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#22c55e' }}>
               <TrendingUp size={20} />
             </div>
-            <div style={{ padding: '4px 8px', backgroundColor: '#f0fdf4', color: '#22c55e', fontSize: '0.65rem', fontWeight: '600', borderRadius: '6px', height: 'fit-content' }}>Healthy</div>
+            <div style={{ padding: '4px 8px', backgroundColor: 'color-mix(in srgb, #22c55e 12%, var(--color-bg-surface))', color: '#22c55e', fontSize: '0.65rem', fontWeight: '600', borderRadius: '6px', height: 'fit-content' }}>Healthy</div>
           </div>
-          <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Resolution Rate</div>
-          <div style={{ fontSize: '1.8rem', fontWeight: '600', color: '#0f172a' }}>{stats.resolutionRate}%</div>
+          <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Resolution Rate</div>
+          <div style={{ fontSize: '1.8rem', fontWeight: '600', color: 'var(--color-text-main)' }}>{stats.resolutionRate}%</div>
         </div>
 
-        <div className="card stat-card" style={{ padding: '24px', backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '16px' }}>
+        <div className="card stat-card" style={{ padding: '24px', backgroundColor: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f43f5e' }}>
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', backgroundColor: 'var(--color-bg-body)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f43f5e' }}>
               <AlertTriangle size={20} />
             </div>
-            <div style={{ padding: '4px 8px', backgroundColor: '#fff1f2', color: '#f43f5e', fontSize: '0.65rem', fontWeight: '600', borderRadius: '6px', height: 'fit-content' }}>Action Needed</div>
+            <div style={{ padding: '4px 8px', backgroundColor: 'var(--color-bg-body)', color: '#f43f5e', fontSize: '0.65rem', fontWeight: '600', borderRadius: '6px', height: 'fit-content' }}>Action Needed</div>
           </div>
-          <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Critical Issues</div>
-          <div style={{ fontSize: '1.8rem', fontWeight: '600', color: '#0f172a' }}>{stats.critical}</div>
+          <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Critical Issues</div>
+          <div style={{ fontSize: '1.8rem', fontWeight: '600', color: 'var(--color-text-main)' }}>{stats.critical}</div>
         </div>
       </div>
 
@@ -649,9 +650,9 @@ export default function AnalyticsPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          style={{ padding: '24px', backgroundColor: 'white', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.02)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          style={{ padding: '24px', backgroundColor: 'var(--color-bg-surface)', borderRadius: '24px', border: '1px solid var(--color-border)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.02)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <div style={{ width: '100%', display: 'flex', justifyContent: 'flex-start', marginBottom: '20px' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Project Distribution</div>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Project Distribution</div>
           </div>
 
           <DonutChart
@@ -676,7 +677,7 @@ export default function AnalyticsPage() {
                       transition: 'opacity 0.2s'
                    }}>
                   <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: isHidden ? '#cbd5e1' : item.color }}></div>
-                  <span style={{ fontSize: '0.9rem', fontWeight: '600', color: isHidden ? '#94a3b8' : '#1e293b', textDecoration: isHidden ? 'line-through' : 'none' }}>{item.name}</span>
+                  <span style={{ fontSize: '0.9rem', fontWeight: '600', color: isHidden ? 'var(--color-text-light)' : 'var(--color-text-main)', textDecoration: isHidden ? 'line-through' : 'none' }}>{item.name}</span>
                 </div>
               );
             })}

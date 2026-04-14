@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { X, Calendar, User, Tag, AlertCircle, HardDrive, CheckSquare, List, ChevronRight, Edit, Link2, Clock, Trash2, Pencil, Copy, ExternalLink, Eye, Check, XCircle, Save, RotateCcw, MessageSquare, History, ArrowRight, Plus, Trash } from 'lucide-react';
 import CustomDropdown from './CustomDropdown';
+import { capitalizeName } from './AuthProvider';
 
 export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, onQuickUpdate, onNavigate, bug, allBugs = [], settings, showToast, currentReporter }) {
 
@@ -62,6 +63,13 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
     }
     return mod;
   };
+
+  const getAssigneeName = (a) => {
+    if (typeof a === 'object' && a !== null) return a.name || '';
+    if (typeof a === 'string' && a.startsWith('{')) { try { return JSON.parse(a).name || a; } catch { return a; } }
+    return a || '';
+  };
+  const assigneeNames = (settings.assignees || []).map(a => getAssigneeName(a));
 
   if (!isOpen || !bug) return null;
 
@@ -163,10 +171,11 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
   };
 
   const updateTempValue = (field, val) => {
-    setTempValues({ ...tempValues, [field]: val });
+    setTempValues(prev => ({ ...prev, [field]: val }));
   };
 
-  const getInitials = (name) => {
+  const getInitials = (val) => {
+    const name = getAssigneeName(val);
     if (!name || name === 'Unassigned' || name === 'Not Assigned') return 'UN';
     const parts = name.split(' ');
     if (parts.length > 1) return (parts[0][0] + parts[1][0]).toUpperCase();
@@ -340,8 +349,11 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
     if (mentions) {
       const uniqueMentions = [...new Set(mentions.map(m => m.substring(1)))];
       uniqueMentions.forEach(async (targetUser) => {
-        // Find if targetUser exists in settings.assignees (case insensitive)
-        const matchedUser = settings.assignees?.find(a => a.toLowerCase() === targetUser.toLowerCase());
+        // Match exact name or first name of a multi-word name
+        const matchedUser = assigneeNames.find(a =>
+          a.toLowerCase() === targetUser.toLowerCase() ||
+          a.split(' ')[0].toLowerCase() === targetUser.toLowerCase()
+        );
         if (matchedUser && matchedUser !== currentReporter) {
           await fetch('/api/notifications', {
             method: 'POST',
@@ -422,8 +434,8 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', animation: 'fadeIn 0.2s' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--color-primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Unsaved edits...</span>
                 <div style={{ display: 'flex', gap: '6px' }}>
-                  <button onClick={() => handleSaveAll(false)} style={{ padding: '4px 12px', fontSize: '0.75rem', fontWeight: '700', borderRadius: '6px', backgroundColor: 'var(--color-primary)', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><Save size={12} /> Save</button>
-                  <button onClick={() => { setTempValues({}); setEditingField(null); }} style={{ padding: '4px 12px', fontSize: '0.75rem', fontWeight: '700', borderRadius: '6px', backgroundColor: '#f1f5f9', color: '#64748b', border: '1px solid #e2e8f0', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><RotateCcw size={12} /> Revert</button>
+                  <button onClick={() => handleSaveAll(false)} style={{ padding: '4px 12px', fontSize: '0.75rem', fontWeight: '700', borderRadius: '6px', backgroundColor: '#2563eb', color: 'white', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><Save size={12} /> Save</button>
+                  <button onClick={() => { setTempValues({}); setEditingField(null); }} style={{ padding: '4px 12px', fontSize: '0.75rem', fontWeight: '700', borderRadius: '6px', backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-muted)', border: '1px solid var(--color-border)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}><RotateCcw size={12} /> Revert</button>
                 </div>
               </div>
             ) : (
@@ -467,21 +479,21 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
               <h2 onDoubleClick={() => startEdit('title', bug.title)} className="hover-editable-field" style={{ fontSize: '1.75rem', fontWeight: '600', color: 'var(--color-text-main)', marginBottom: '24px', lineHeight: '1.2', cursor: 'text', border: '1px solid transparent', padding: '4px 0' }}>{tempValues.title !== undefined ? tempValues.title : bug.title}</h2>
             )}
 
-            <div style={{ marginBottom: '40px' }}><h4 className="meta-label"><Tag size={14} /> Description</h4> {editingField === 'description' ? ( <textarea autoFocus className="inline-edit-input" style={{ width: '100%', minHeight: '120px', padding: '12px', borderRadius: '10px', border: '1px solid var(--color-primary)', fontSize: '1.05rem', lineHeight: '1.65', outline: 'none' }} value={tempValues.description !== undefined ? tempValues.description : bug.description} onChange={(e) => updateTempValue('description', e.target.value)} onBlur={() => setEditingField(null)} /> ) : ( <div onDoubleClick={() => startEdit('description', bug.description)} className="hover-editable-field" style={{ fontSize: '1.05rem', color: 'var(--color-text-main)', lineHeight: '1.65', whiteSpace: 'pre-wrap', cursor: 'text', border: '1px solid transparent', padding: '8px 0', minHeight: '20px' }}> {tempValues.description !== undefined ? tempValues.description : (bug.description || 'Add description...')} </div> )} </div>             <div style={{ marginBottom: '40px' }}><h4 className="meta-label"><List size={14} /> Steps to Reproduce</h4> {editingField === 'stepsToReproduce' ? ( <textarea autoFocus className="inline-edit-input" style={{ width: '100%', minHeight: '150px', padding: '16px', borderRadius: '10px', border: '1px solid var(--color-primary)', fontSize: '0.95rem', lineHeight: '1.8', outline: 'none' }} value={tempValues.stepsToReproduce !== undefined ? tempValues.stepsToReproduce : bug.stepsToReproduce} onChange={(e) => updateTempValue('stepsToReproduce', e.target.value)} onBlur={() => setEditingField(null)} /> ) : ( <div onDoubleClick={() => startEdit('stepsToReproduce', bug.stepsToReproduce)} className="hover-editable-field" style={{ backgroundColor: '#f9fafb', padding: '24px', borderRadius: '12px', fontSize: '0.95rem', border: '1px solid var(--color-border-light)', lineHeight: '1.8', color: '#1e293b', cursor: 'text' }}> {(() => { const text = tempValues.stepsToReproduce !== undefined ? tempValues.stepsToReproduce : (bug.stepsToReproduce || ''); if (!text) return <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Double-click to add steps.</span>; const parts = text.split(/(\d+)\s*[.:)-]\s*/g); if (parts.length === 1) return <div style={{ whiteSpace: 'pre-wrap' }}>{text}</div>; const steps = []; if (parts[0].trim()) steps.push({ num: 1, content: parts[0].trim() }); for (let i = 1; i < parts.length; i += 2) { const num = parts[i]; const content = parts[i + 1] || ""; if (content.trim()) steps.push({ num, content: content.trim() }); } return steps.map((s, idx) => ( <div key={idx} style={{ display: 'flex', gap: '8px', marginBottom: idx === steps.length - 1 ? 0 : '12px' }}> <span style={{ fontWeight: '600', color: 'inherit', minWidth: '18px', flexShrink: 0, textAlign: 'right' }}>{s.num}.</span> <span style={{ whiteSpace: 'pre-wrap' }}>{s.content}</span> </div> )); })()} </div> )} </div>
+            <div style={{ marginBottom: '40px' }}><h4 className="meta-label"><Tag size={14} /> Description</h4> {editingField === 'description' ? ( <textarea autoFocus className="inline-edit-input" style={{ width: '100%', minHeight: '120px', padding: '12px', borderRadius: '10px', border: '1px solid var(--color-primary)', fontSize: '1.05rem', lineHeight: '1.65', outline: 'none' }} value={tempValues.description !== undefined ? tempValues.description : bug.description} onChange={(e) => updateTempValue('description', e.target.value)} onBlur={() => setEditingField(null)} /> ) : ( <div onDoubleClick={() => startEdit('description', bug.description)} className="hover-editable-field" style={{ fontSize: '1.05rem', color: 'var(--color-text-main)', lineHeight: '1.65', whiteSpace: 'pre-wrap', cursor: 'text', border: '1px solid transparent', padding: '8px 0', minHeight: '20px' }}> {tempValues.description !== undefined ? tempValues.description : (bug.description || 'Add description...')} </div> )} </div>             <div style={{ marginBottom: '40px' }}><h4 className="meta-label"><List size={14} /> Steps to Reproduce</h4> {editingField === 'stepsToReproduce' ? ( <textarea autoFocus className="inline-edit-input" style={{ width: '100%', minHeight: '150px', padding: '16px', borderRadius: '10px', border: '1px solid var(--color-primary)', fontSize: '0.95rem', lineHeight: '1.8', outline: 'none' }} value={tempValues.stepsToReproduce !== undefined ? tempValues.stepsToReproduce : bug.stepsToReproduce} onChange={(e) => updateTempValue('stepsToReproduce', e.target.value)} onBlur={() => setEditingField(null)} /> ) : ( <div onDoubleClick={() => startEdit('stepsToReproduce', bug.stepsToReproduce)} className="hover-editable-field" style={{ backgroundColor: 'var(--color-bg-body)', padding: '24px', borderRadius: '12px', fontSize: '0.95rem', border: '1px solid var(--color-border-light)', lineHeight: '1.8', color: 'var(--color-text-main)', cursor: 'text' }}> {(() => { const text = tempValues.stepsToReproduce !== undefined ? tempValues.stepsToReproduce : (bug.stepsToReproduce || ''); if (!text) return <span style={{ color: 'var(--color-text-light)', fontStyle: 'italic' }}>Double-click to add steps.</span>; const parts = text.split(/(\d+)\s*[.:)-]\s*/g); if (parts.length === 1) return <div style={{ whiteSpace: 'pre-wrap' }}>{text}</div>; const steps = []; if (parts[0].trim()) steps.push({ num: 1, content: parts[0].trim() }); for (let i = 1; i < parts.length; i += 2) { const num = parts[i]; const content = parts[i + 1] || ""; if (content.trim()) steps.push({ num, content: content.trim() }); } return steps.map((s, idx) => ( <div key={idx} style={{ display: 'flex', gap: '8px', marginBottom: idx === steps.length - 1 ? 0 : '12px' }}> <span style={{ fontWeight: '600', color: 'inherit', minWidth: '18px', flexShrink: 0, textAlign: 'right' }}>{s.num}.</span> <span style={{ whiteSpace: 'pre-wrap' }}>{s.content}</span> </div> )); })()} </div> )} </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: '40px' }}>
-              <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', borderLeft: '4px solid var(--color-primary)' }}>
-                <h4 className="meta-label">Expected Result</h4> {editingField === 'expectedResult' ? ( <textarea autoFocus style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-primary)', outline: 'none', fontSize: '0.9rem' }} value={tempValues.expectedResult !== undefined ? tempValues.expectedResult : bug.expectedResult} onChange={(e) => updateTempValue('expectedResult', e.target.value)} onBlur={() => setEditingField(null)} /> ) : ( <div onDoubleClick={() => startEdit('expectedResult', bug.expectedResult)} className="hover-editable-field" style={{ fontSize: '0.95rem', color: '#475569', minHeight: '16px', padding: '8px 0' }}> {tempValues.expectedResult !== undefined ? tempValues.expectedResult : (bug.expectedResult || '—')} </div> )} 
+              <div style={{ backgroundColor: 'var(--color-bg-body)', padding: '16px', borderRadius: '12px', borderLeft: '4px solid var(--color-primary)' }}>
+                <h4 className="meta-label">Expected Result</h4> {editingField === 'expectedResult' ? ( <textarea autoFocus style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid var(--color-primary)', outline: 'none', fontSize: '0.9rem' }} value={tempValues.expectedResult !== undefined ? tempValues.expectedResult : bug.expectedResult} onChange={(e) => updateTempValue('expectedResult', e.target.value)} onBlur={() => setEditingField(null)} /> ) : ( <div onDoubleClick={() => startEdit('expectedResult', bug.expectedResult)} className="hover-editable-field" style={{ fontSize: '0.95rem', color: 'var(--color-text-muted)', minHeight: '16px', padding: '8px 0' }}> {tempValues.expectedResult !== undefined ? tempValues.expectedResult : (bug.expectedResult || '—')} </div> )} 
               </div>
-              <div style={{ backgroundColor: '#fff5f5', padding: '16px', borderRadius: '12px', borderLeft: '4px solid #ef4444' }}> <h4 className="meta-label" style={{ color: '#b91c1c' }}><AlertCircle size={12} /> Actual Result</h4> {editingField === 'actualResult' ? ( <textarea autoFocus style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ef4444', outline: 'none', fontSize: '0.9rem' }} value={tempValues.actualResult !== undefined ? tempValues.actualResult : bug.actualResult} onChange={(e) => updateTempValue('actualResult', e.target.value)} onBlur={() => setEditingField(null)} /> ) : ( <div onDoubleClick={() => startEdit('actualResult', bug.actualResult)} className="hover-editable-field" style={{ fontSize: '0.95rem', color: '#b91c1c', fontWeight: '500', minHeight: '16px', padding: '8px 0' }}> {tempValues.actualResult !== undefined ? tempValues.actualResult : (bug.actualResult || '—')} </div> )} </div>
+              <div style={{ backgroundColor: 'color-mix(in srgb, #ef4444 8%, var(--color-bg-surface))', padding: '16px', borderRadius: '12px', borderLeft: '4px solid #ef4444' }}> <h4 className="meta-label" style={{ color: '#ef4444' }}><AlertCircle size={12} /> Actual Result</h4> {editingField === 'actualResult' ? ( <textarea autoFocus style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ef4444', outline: 'none', fontSize: '0.9rem' }} value={tempValues.actualResult !== undefined ? tempValues.actualResult : bug.actualResult} onChange={(e) => updateTempValue('actualResult', e.target.value)} onBlur={() => setEditingField(null)} /> ) : ( <div onDoubleClick={() => startEdit('actualResult', bug.actualResult)} className="hover-editable-field" style={{ fontSize: '0.95rem', color: '#ef4444', fontWeight: '500', minHeight: '16px', padding: '8px 0' }}> {tempValues.actualResult !== undefined ? tempValues.actualResult : (bug.actualResult || '—')} </div> )} </div>
             </div>
 
             {/* TECHNICAL CONTEXT - MINIMALIST RESTORATION */}
-            <div style={{ backgroundColor: '#f1f5f9', padding: '24px', borderRadius: '16px', marginBottom: '40px' }}>
-               <h4 className="meta-label" style={{ marginBottom: '16px', color: '#475569', fontWeight: '700' }}><HardDrive size={14} /> Technical Context</h4>
+            <div style={{ backgroundColor: 'var(--color-bg-body)', padding: '24px', borderRadius: '16px', marginBottom: '40px' }}>
+               <h4 className="meta-label" style={{ marginBottom: '16px', color: 'var(--color-text-muted)', fontWeight: '700' }}><HardDrive size={14} /> Technical Context</h4>
                
                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                 <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: '700', textTransform: 'uppercase' }}>GitHub PR Links</div>
-                 <button onClick={addPr} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: '700', background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer' }}>
+                 <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: '700', textTransform: 'uppercase' }}>GitHub PR Links</div>
+                 <button onClick={addPr} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: '700', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer' }}>
                     <Plus size={12} /> Add PR
                  </button>
                </div>
@@ -508,7 +520,7 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
                             }}
                             style={ pr 
                               ? { fontSize: '0.75rem', color: 'var(--color-primary)', backgroundColor: 'rgba(59, 130, 246, 0.1)', padding: '6px 14px', borderRadius: '20px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', width: 'fit-content', border: '1px solid rgba(59, 130, 246, 0.2)' }
-                              : { fontSize: '0.75rem', color: '#64748b', backgroundColor: 'transparent', padding: '6px 14px', borderRadius: '20px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', width: 'fit-content', border: '1px dashed #cbd5e1' }
+                              : { fontSize: '0.75rem', color: 'var(--color-text-muted)', backgroundColor: 'transparent', padding: '6px 14px', borderRadius: '20px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', width: 'fit-content', border: '1px dashed #cbd5e1' }
                             }
                             title={pr}>
                             <Link2 size={14} /> 
@@ -520,19 +532,19 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
                     </div>
                   ))}
                   {getPrsArray().length === 0 && (
-                    <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic', padding: '4px' }}>No PR links added.</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', fontStyle: 'italic', padding: '4px' }}>No PR links added.</div>
                   )}
                </div>
 
                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
-                 <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: '800', textTransform: 'uppercase' }}>Reproduction Repository (CURLs)</div>
-                 <button onClick={addCurl} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: '800', background: 'var(--color-primary)', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer' }}>
+                 <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>Reproduction Repository (CURLs)</div>
+                 <button onClick={addCurl} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', fontWeight: '800', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer' }}>
                     <Plus size={12} /> Add CURL
                  </button>
                </div>
                <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '10px' }}>
                   {getCurlsArray().map((curl, idx) => (
-                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'white', padding: '6px 14px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', width: 'fit-content' }}>
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--color-bg-surface)', padding: '6px 14px', borderRadius: '20px', border: '1px solid var(--color-border)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', width: 'fit-content' }}>
                        <div style={{ minWidth: 0 }}>
                           {editingField === `curl-${idx}` ? (
                             <textarea autoFocus style={{ width: '200px', padding: '6px 8px', borderRadius: '6px', border: '1px solid var(--color-primary)', outline: 'none', fontSize: '0.75rem', fontFamily: 'monospace', height: '60px', wordBreak: 'break-all' }} value={curl} onChange={(e) => updateCurlValue(idx, e.target.value)} onBlur={() => setEditingField(null)} />
@@ -555,18 +567,18 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
                     </div>
                   ))}
                   {getCurlsArray().length === 0 && (
-                    <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic', padding: '10px' }}>No reproduction CURLs added.</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', fontStyle: 'italic', padding: '10px' }}>No reproduction CURLs added.</div>
                   )}
                </div>
             </div>
 
-            <style jsx>{` .hover-editable-field:hover { background-color: #f8fafc; border-radius: 4px; outline: 1px dashed var(--color-border); } `}</style>
+            <style jsx>{` .hover-editable-field:hover { background-color: color-mix(in srgb, var(--color-text-main) 6%, var(--color-bg-surface)); border-radius: 4px; outline: 1px dashed var(--color-border); } `}</style>
 
              {/* DISCUSSION & REVIEW SECTION */}
              <div style={{ marginTop: '48px', borderTop: '2px solid #f1f5f9', paddingTop: '32px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
                    <MessageSquare size={18} color="var(--color-primary)" />
-                   <h3 style={{ fontSize: '0.9rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#1e293b' }}>Discussion & Review</h3>
+                   <h3 style={{ fontSize: '0.9rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-main)' }}>Discussion & Review</h3>
                 </div>
 
                 {/* Comment Thread */}
@@ -580,9 +592,9 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
                       } catch(e) { }
 
                       if (comments.length === 0) return (
-                        <div style={{ textAlign: 'center', padding: '32px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px dashed #e2e8f0' }}>
+                        <div style={{ textAlign: 'center', padding: '32px', backgroundColor: 'var(--color-bg-body)', borderRadius: '12px', border: '1px dashed #e2e8f0' }}>
                            <MessageSquare size={24} color="#94a3b8" style={{ margin: '0 auto 12px', opacity: 0.5 }} />
-                           <p style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic' }}>No discussion started for this bug report yet.</p>
+                           <p style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', fontStyle: 'italic' }}>No discussion started for this bug report yet.</p>
                         </div>
                       );
 
@@ -590,21 +602,21 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
                         const isMe = c.author === currentReporter;
                         return (
                           <div key={c.id || idx} style={{ display: 'flex', gap: '12px', flexDirection: isMe ? 'row' : 'row-reverse', animation: 'fadeIn 0.3s ease' }}>
-                             <div className="avatar" style={{ width: '32px', height: '32px', fontSize: '0.75rem', flexShrink: 0, backgroundColor: isMe ? 'var(--color-primary)' : '#8b5cf6' }}>
+                             <div className="avatar" style={{ width: '32px', height: '32px', fontSize: '0.75rem', flexShrink: 0, backgroundColor: isMe ? '#2563eb' : '#8b5cf6' }}>
                                 {getInitials(c.author)}
                              </div>
                              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-start' : 'flex-end' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexDirection: isMe ? 'row' : 'row-reverse' }}>
-                                   <span style={{ fontSize: '0.85rem', fontWeight: '700', color: '#1e293b' }}>{isMe ? 'You' : c.author}</span>
-                                   <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>{formatDate(c.date)}</span>
+                                   <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--color-text-main)' }}>{isMe ? 'You' : c.author}</span>
+                                   <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>{formatDate(c.date)}</span>
                                 </div>
                                 <div style={{ 
-                                   backgroundColor: isMe ? 'white' : '#f8fafc', 
+                                   backgroundColor: isMe ? 'var(--color-bg-surface)' : 'var(--color-bg-body)',
                                    padding: '12px 14px', 
                                    borderRadius: isMe ? '0 12px 12px 12px' : '12px 0 12px 12px', 
-                                   border: '1px solid #e2e8f0', 
+                                   border: '1px solid var(--color-border)', 
                                    fontSize: '0.9rem', 
-                                   color: '#334155', 
+                                   color: 'var(--color-text-main)', 
                                    lineHeight: '1.5', 
                                    whiteSpace: 'pre-wrap',
                                    boxShadow: isMe ? '0 2px 4px rgba(0,0,0,0.02)' : 'none',
@@ -620,18 +632,18 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
                 </div>
 
                 {/* New Comment Input */}
-                <div style={{ position: 'relative', backgroundColor: 'white', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                <div style={{ position: 'relative', backgroundColor: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '16px', padding: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
                    {showMentions && (
                      <div style={{ 
                        position: 'absolute', bottom: '100%', left: '0', mb: '8px',
-                       backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '12px',
+                       backgroundColor: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', borderRadius: '12px',
                        boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', zIndex: 100,
                        width: '200px', maxHeight: '200px', overflowY: 'auto'
                      }}>
-                        {settings.assignees?.filter(a => a.toLowerCase().includes(mentionSearch.toLowerCase()) && a !== 'Not Assigned' && a !== 'Unassigned').map(user => (
-                          <div key={user} onClick={() => insertMention(user)} style={{ padding: '10px 16px', cursor: 'pointer', fontSize: '0.85rem', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {assigneeNames.filter(a => a.toLowerCase().includes(mentionSearch.toLowerCase()) && a !== 'Not Assigned' && a !== 'Unassigned').map(user => (
+                          <div key={user} onClick={() => insertMention(user)} style={{ padding: '10px 16px', cursor: 'pointer', fontSize: '0.85rem', borderBottom: '1px solid var(--color-border-light)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                              <div className="avatar" style={{ width: '20px', height: '20px', fontSize: '0.6rem' }}>{getInitials(user)}</div>
-                             {user}
+                             {capitalizeName(user)}
                           </div>
                         ))}
                      </div>
@@ -639,19 +651,19 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
                    <textarea 
                      id="comment-textarea"
                      placeholder="Type a review comment or update here... (use @ to tag)"
-                     style={{ width: '100%', border: 'none', background: 'transparent', resize: 'none', minHeight: '80px', fontSize: '0.9rem', outline: 'none', color: '#1e293b' }}
+                     style={{ width: '100%', border: 'none', background: 'transparent', resize: 'none', minHeight: '80px', fontSize: '0.9rem', outline: 'none', color: 'var(--color-text-main)' }}
                      value={newComment}
                      onChange={handleTextChange}
                      onKeyDown={(e) => {
                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleAddComment();
                      }}
                    />
-                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
-                      <span style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Press <b>CMD + Enter</b> to post</span>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', borderTop: '1px solid var(--color-border-light)', paddingTop: '12px' }}>
+                      <span style={{ fontSize: '0.7rem', color: 'var(--color-text-light)' }}>Press <b>CMD + Enter</b> to post</span>
                       <button 
                          onClick={handleAddComment}
                          disabled={!newComment.trim()}
-                         style={{ padding: '8px 16px', borderRadius: '8px', backgroundColor: newComment.trim() ? 'var(--color-primary)' : '#e2e8f0', color: 'white', fontWeight: '700', fontSize: '0.8rem', border: 'none', cursor: newComment.trim() ? 'pointer' : 'not-allowed', transition: 'all 0.2s' }}>
+                         style={{ padding: '8px 16px', borderRadius: '8px', backgroundColor: newComment.trim() ? '#2563eb' : 'color-mix(in srgb, var(--color-text-main) 15%, var(--color-bg-surface))', color: 'white', fontWeight: '700', fontSize: '0.8rem', border: 'none', cursor: newComment.trim() ? 'pointer' : 'not-allowed', transition: 'all 0.2s' }}>
                          Post Review
                       </button>
                    </div>
@@ -665,23 +677,25 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
               <div className="meta-label"><Clock size={14} /> Priority & Severity</div>
               <div style={{ display: 'flex', gap: '8px', marginTop: '6px', alignItems: 'center' }}>
                   {editingField === 'priority' ? (
-                    <CustomDropdown 
+                    <CustomDropdown
                       options={settings.priorities}
                       selected={tempValues.priority !== undefined ? tempValues.priority : bug.priority}
                       onSelect={(val) => updateTempValue('priority', val)}
                       placeholder="Priority"
                       style={{ minWidth: '110px' }}
+                      onClose={() => setEditingField(null)}
                     />
                   ) : (
                     <span onDoubleClick={() => startEdit('priority', bug.priority)} className={`badge ${getPriorityClass(tempValues.priority !== undefined ? tempValues.priority : bug.priority)}`} style={{ cursor: 'pointer' }}>{tempValues.priority !== undefined ? tempValues.priority : bug.priority}</span>
                   )}
                   {editingField === 'severity' ? (
-                    <CustomDropdown 
+                    <CustomDropdown
                       options={["Critical", "Major", "Minor"]}
                       selected={tempValues.severity !== undefined ? tempValues.severity : bug.severity}
                       onSelect={(val) => updateTempValue('severity', val)}
                       placeholder="Severity"
                       style={{ minWidth: '110px' }}
+                      onClose={() => setEditingField(null)}
                     />
                   ) : (
                     <span onDoubleClick={() => startEdit('severity', bug.severity)} className="badge badge-outline" style={{ cursor: 'pointer' }}>{tempValues.severity !== undefined ? tempValues.severity : bug.severity}</span>
@@ -692,17 +706,18 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
             <div className="meta-item">
               <div className="meta-label"><CheckSquare size={14} /> Assignee</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '6px' }}>
-                <div className="avatar">{getInitials(tempValues.assignee !== undefined ? tempValues.assignee : bug.assignee)}</div>
-                {editingField === 'assignee' ? ( 
-                  <CustomDropdown 
-                    options={settings.assignees}
-                    selected={tempValues.assignee !== undefined ? tempValues.assignee : bug.assignee}
-                    onSelect={(val) => updateTempValue('assignee', val)}
+                <div className="avatar">{getInitials(getAssigneeName(tempValues.assignee !== undefined ? tempValues.assignee : bug.assignee))}</div>
+                {editingField === 'assignee' ? (
+                  <CustomDropdown
+                    options={assigneeNames}
+                    selected={getAssigneeName(tempValues.assignee !== undefined ? tempValues.assignee : bug.assignee)}
+                    onSelect={(val) => updateTempValue('assignee', getAssigneeName(val))}
                     placeholder="Assignee"
                     fullWidth
+                    onClose={() => setEditingField(null)}
                   />
-                ) : ( 
-                  <span onDoubleClick={() => startEdit('assignee', bug.assignee)} style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--color-text-main)', cursor: 'pointer' }}>{tempValues.assignee !== undefined ? tempValues.assignee : bug.assignee}</span> 
+                ) : (
+                  <span onDoubleClick={() => startEdit('assignee', bug.assignee)} style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--color-text-main)', cursor: 'pointer' }}>{capitalizeName(getAssigneeName(tempValues.assignee !== undefined ? tempValues.assignee : bug.assignee))}</span> 
                 )}
               </div>
             </div>
@@ -711,16 +726,16 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
               <div className="meta-label"><HardDrive size={14} /> Product Domain</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
                 {editingField === 'project' ? ( 
-                  <CustomDropdown 
+                  <CustomDropdown
                     options={["Pharmacy ERP", "Clinic ERP", "Laboratory ERP", "Hospital ERP"]}
                     selected={tempValues.project !== undefined ? tempValues.project : bug.project}
                     onSelect={(val) => {
                       const newModules = getModulesForProject(val);
-                      updateTempValue('project', val);
-                      updateTempValue('module', newModules[0]);
+                      setTempValues(prev => ({ ...prev, project: val, module: newModules[0] }));
                     }}
                     placeholder="Project"
                     fullWidth
+                    onClose={() => setEditingField(null)}
                   />
                 ) : ( 
                   <span onDoubleClick={() => startEdit('project', bug.project)} className="badge badge-tag" style={{ cursor: 'pointer', fontSize: '0.8rem', width: 'fit-content' }}>{tempValues.project !== undefined ? tempValues.project : (bug.project || 'General')}</span> 
@@ -729,12 +744,13 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <ChevronRight size={12} color="#94a3b8" />
                   {editingField === 'module' ? (
-                    <CustomDropdown 
+                    <CustomDropdown
                       options={getModulesForProject(tempValues.project !== undefined ? tempValues.project : bug.project)}
                       selected={tempValues.module !== undefined ? tempValues.module : bug.module}
                       onSelect={(val) => updateTempValue('module', val)}
                       placeholder="Module"
                       fullWidth
+                      onClose={() => setEditingField(null)}
                     />
                   ) : (
                     <span onDoubleClick={() => startEdit('module', bug.module)} style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--color-primary)', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.02em' }}>
@@ -766,11 +782,11 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
                 visited.delete(bug.id);
                 const cluster = Array.from(visited).map(id => allBugs.find(b => b.id === id)).filter(Boolean);
                 if (cluster.length === 0) return <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', fontStyle: 'italic' }}>No cluster linked.</div>;
-                return ( <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}> {cluster.map(related => ( <div key={related.id} onClick={() => attemptNavigate(related)} style={{ fontSize: '0.8rem', color: 'var(--color-text-main)', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: '6px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}><Link2 size={12} color="var(--color-primary)" /> <span style={{ fontFamily: 'monospace', opacity: 0.7 }}>{getShortId(related.id)}:</span> {related.title}</div> ))} </div> );
+                return ( <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}> {cluster.map(related => ( <div key={related.id} onClick={() => attemptNavigate(related)} style={{ fontSize: '0.8rem', color: 'var(--color-text-main)', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 10px', borderRadius: '6px', backgroundColor: 'var(--color-bg-body)', border: '1px solid var(--color-border)' }}><Link2 size={12} color="var(--color-primary)" /> <span style={{ fontFamily: 'monospace', opacity: 0.7 }}>{getShortId(related.id)}:</span> {related.title}</div> ))} </div> );
               })()}
             </div>
 
-            <div className="meta-item" style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '20px', marginTop: '20px' }}><div className="meta-label"><User size={14} /> Reporter</div><div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}><div className="avatar" style={{ width: '22px', height: '22px', fontSize: '0.5rem', backgroundColor: '#8b5cf6' }}>{getInitials(bug.reporter)}</div><span className="meta-value" style={{ fontSize: '0.8rem', fontWeight: '600' }}>{bug.reporter || 'System'}</span></div></div>
+            <div className="meta-item" style={{ borderTop: '1px solid var(--color-border-light)', paddingTop: '20px', marginTop: '20px' }}><div className="meta-label"><User size={14} /> Reporter</div><div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}><div className="avatar" style={{ width: '22px', height: '22px', fontSize: '0.5rem', backgroundColor: '#8b5cf6' }}>{getInitials(bug.reporter)}</div><span className="meta-value" style={{ fontSize: '0.8rem', fontWeight: '600' }}>{capitalizeName(getAssigneeName(bug.reporter)) || 'System'}</span></div></div>
 
             <div style={{ borderTop: '2px solid #f1f5f9', paddingTop: '20px', marginTop: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
@@ -784,11 +800,11 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
                     const activity = typeof bug.activityLog === 'string' ? JSON.parse(bug.activityLog || '[]') : (bug.activityLog || []);
                     history.push(...activity);
                   } catch(e) {}
-                  if (history.length === 0) return <div style={{ textAlign: 'center', padding: '20px', color: '#94a3b8', fontSize: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '8px' }}>No records found.</div>;
+                  if (history.length === 0) return <div style={{ textAlign: 'center', padding: '20px', color: 'var(--color-text-light)', fontSize: '0.75rem', backgroundColor: 'var(--color-bg-body)', borderRadius: '8px' }}>No records found.</div>;
                   return history.sort((a,b) => new Date(b.date || 0) - new Date(a.date || 0)).map((item, idx) => (
-                    <div key={idx} style={{ position: 'relative', paddingBottom: '16px', paddingLeft: '20px', borderLeft: '1px solid #e2e8f0' }}>
-                       <div style={{ position: 'absolute', left: '-5px', top: '0', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'white', border: '1.5px solid var(--color-primary)' }}></div>
-                       <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#1e293b' }}>{item.action || 'Updated'}</div>
+                    <div key={idx} style={{ position: 'relative', paddingBottom: '16px', paddingLeft: '20px', borderLeft: '1px solid var(--color-border)' }}>
+                       <div style={{ position: 'absolute', left: '-5px', top: '0', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: 'var(--color-bg-surface)', border: '1.5px solid var(--color-primary)' }}></div>
+                       <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--color-text-main)' }}>{item.action || 'Updated'}</div>
                        {item.type === 'curl' && (
                          <div style={{ marginTop: '4px' }}>
                            <button 
@@ -798,32 +814,36 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
                            </button>
                          </div>
                        )}
-                       {(item.from || item.to) && (
-                         <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                       {(item.from || item.to) && (() => {
+                         const fromVal = typeof item.from === 'object' ? JSON.stringify(item.from) : (item.from || '—');
+                         const toVal = typeof item.to === 'object' ? JSON.stringify(item.to) : (item.to || '—');
+                         return (
+                         <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                             <div className="restore-target" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                               <span style={{ textDecoration: 'line-through', opacity: 0.7, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.from !== '—' ? item.from : ''}>
-                                  {item.from || '—'}
+                               <span style={{ textDecoration: 'line-through', opacity: 0.7, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fromVal !== '—' ? fromVal : ''}>
+                                  {fromVal}
                                </span>
-                               {item.from && item.from !== '—' && (
-                                  <button onClick={() => restoreLogValue(item, 'from')} className="icon-action-btn" style={{ padding: '2px', backgroundColor: '#f1f5f9' }} title="Restore this old value">
+                               {fromVal !== '—' && (
+                                  <button onClick={() => restoreLogValue(item, 'from')} className="icon-action-btn" style={{ padding: '2px', backgroundColor: 'var(--color-bg-body)' }} title="Restore this old value">
                                      <RotateCcw size={10} color="var(--color-primary)" />
                                   </button>
                                )}
                             </div>
                             <ArrowRight size={10} style={{ flexShrink: 0 }} />
                             <div className="restore-target" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                               <span style={{ color: 'var(--color-text-main)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.to !== '—' ? item.to : ''}>
-                                  {item.to || '—'}
+                               <span style={{ color: 'var(--color-text-main)', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={toVal !== '—' ? toVal : ''}>
+                                  {toVal}
                                </span>
-                               {item.to && item.to !== '—' && (
-                                  <button onClick={() => restoreLogValue(item, 'to')} className="icon-action-btn" style={{ padding: '2px', backgroundColor: '#f1f5f9' }} title="Restore this new value">
+                               {toVal !== '—' && (
+                                  <button onClick={() => restoreLogValue(item, 'to')} className="icon-action-btn" style={{ padding: '2px', backgroundColor: 'var(--color-bg-body)' }} title="Restore this new value">
                                      <RotateCcw size={10} color="var(--color-primary)" />
                                   </button>
                                )}
                             </div>
                          </div>
-                       )}
-                       <div style={{ fontSize: '0.65rem', color: '#94a3b8', marginTop: '2px' }}>{formatDate(item.date)}</div>
+                         );
+                       })()}
+                       <div style={{ fontSize: '0.65rem', color: 'var(--color-text-light)', marginTop: '2px' }}>{formatDate(item.date)}</div>
                     </div>
                   ));
                 })()}
@@ -835,14 +855,14 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
 
       {showConfirmModal && (
         <div className="modal-overlay" style={{ zIndex: 12000 }} onClick={() => setShowConfirmModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px', padding: '36px', textAlign: 'center', borderRadius: '24px' }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(440px, 92vw)', padding: 'clamp(20px, 4vw, 36px)', textAlign: 'center', borderRadius: '24px' }}>
             <div style={{ backgroundColor: '#fff7ed', width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', color: '#f97316' }}> <AlertCircle size={32} /> </div>
             <h3 style={{ fontSize: '1.5rem', fontWeight: '800', marginBottom: '12px' }}>Unsaved Modifications</h3>
-            <p style={{ color: '#64748b', marginBottom: '32px', lineHeight: '1.6' }}>You have pending edits to <b>{getShortId(bug.id)}</b>. How would you like to proceed?</p>
+            <p style={{ color: 'var(--color-text-muted)', marginBottom: '32px', lineHeight: '1.6' }}>You have pending edits to <b>{getShortId(bug.id)}</b>. How would you like to proceed?</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <button onClick={() => handleSaveAll(true)} style={{ width: '100%', padding: '14px', borderRadius: '12px', backgroundColor: 'var(--color-primary)', color: 'white', fontWeight: '700', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><Save size={18} /> Save & {pendingNavigation ? 'Go to Linked' : 'Close'}</button>
-              <button onClick={() => setShowConfirmModal(false)} style={{ width: '100%', padding: '14px', borderRadius: '12px', backgroundColor: '#f1f5f9', color: '#1e293b', fontWeight: '700', border: 'none', cursor: 'pointer' }}>Keep Editing</button>
-              <button onClick={handleDiscard} style={{ width: '100%', padding: '14px', borderRadius: '12px', backgroundColor: 'white', color: '#ef4444', fontWeight: '600', border: '1px solid #ef4444', cursor: 'pointer' }}>Discard & {pendingNavigation ? 'Continue' : 'Close'}</button>
+              <button onClick={() => handleSaveAll(true)} style={{ width: '100%', padding: '14px', borderRadius: '12px', backgroundColor: '#2563eb', color: 'white', fontWeight: '700', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><Save size={18} /> Save & {pendingNavigation ? 'Go to Linked' : 'Close'}</button>
+              <button onClick={() => setShowConfirmModal(false)} style={{ width: '100%', padding: '14px', borderRadius: '12px', backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-main)', fontWeight: '700', border: 'none', cursor: 'pointer' }}>Keep Editing</button>
+              <button onClick={handleDiscard} style={{ width: '100%', padding: '14px', borderRadius: '12px', backgroundColor: 'var(--color-bg-surface)', color: '#ef4444', fontWeight: '600', border: '1px solid #ef4444', cursor: 'pointer' }}>Discard & {pendingNavigation ? 'Continue' : 'Close'}</button>
             </div>
           </div>
         </div>
@@ -853,26 +873,26 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
         <div className="modal-overlay" style={{ zIndex: 13000, backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }} onClick={() => setViewingCurl(null)}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ 
             width: '90vw', 
-            maxWidth: '1000px', 
+            maxWidth: 'min(1000px, 95vw)', 
             height: '80vh', 
             padding: '40px', 
             borderRadius: '28px', 
             display: 'flex', 
             flexDirection: 'column',
-            backgroundColor: 'white',
+            backgroundColor: 'var(--color-bg-surface)',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            border: '1px solid rgba(255,255,255,0.8)',
+            border: '1px solid var(--color-border)',
             animation: 'modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
               <div>
-                <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1e293b', letterSpacing: '-0.02em' }}>Technical Artifact Inspection</h3>
-                <p style={{ fontSize: '0.875rem', color: '#64748b', marginTop: '6px', fontWeight: '500' }}>Double-click the code surface to copy this record to your clipboard. Use this for local reproduction.</p>
+                <h3 style={{ fontSize: '1.5rem', fontWeight: '800', color: 'var(--color-text-main)', letterSpacing: '-0.02em' }}>Technical Artifact Inspection</h3>
+                <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginTop: '6px', fontWeight: '500' }}>Double-click the code surface to copy this record to your clipboard. Use this for local reproduction.</p>
               </div>
               <button 
                 onClick={() => setViewingCurl(null)} 
                 className="icon-action-btn" 
-                style={{ width: '44px', height: '44px', borderRadius: '12px', backgroundColor: '#f1f5f9', color: '#64748b', transition: 'all 0.2s' }}
+                style={{ width: '44px', height: '44px', borderRadius: '12px', backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-muted)', transition: 'all 0.2s' }}
               >
                 <X size={24} />
               </button>
@@ -883,8 +903,8 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
               title="Double-click to copy"
               style={{ 
                 flex: 1, 
-                backgroundColor: '#f8fafc', 
-                color: '#334155', 
+                backgroundColor: 'var(--color-bg-body)', 
+                color: 'var(--color-text-main)', 
                 padding: '36px', 
                 borderRadius: '20px', 
                 fontSize: '0.95rem', 
@@ -892,13 +912,13 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
                 whiteSpace: 'pre-wrap', 
                 wordBreak: 'break-all', 
                 overflowY: 'auto', 
-                border: '1px solid #e2e8f0', 
+                border: '1px solid var(--color-border)', 
                 cursor: 'pointer', 
                 lineHeight: '1.7', 
                 boxShadow: 'inset 0 2px 4px 0 rgba(0,0,0,0.03)',
                 position: 'relative'
               }}>
-              <div style={{ position: 'absolute', top: '16px', right: '16px', backgroundColor: 'white', padding: '4px 10px', borderRadius: '6px', fontSize: '0.65rem', fontWeight: '800', color: '#94a3b8', border: '1px solid #e2e8f0', textTransform: 'uppercase' }}>
+              <div style={{ position: 'absolute', top: '16px', right: '16px', backgroundColor: 'var(--color-bg-surface)', padding: '4px 10px', borderRadius: '6px', fontSize: '0.65rem', fontWeight: '800', color: 'var(--color-text-light)', border: '1px solid var(--color-border)', textTransform: 'uppercase' }}>
                 RAW SOURCE
               </div>
               {viewingCurl.value}
@@ -935,10 +955,10 @@ export default function BugDetails({ isOpen, onClose, onEdit, onStatusUpdate, on
                   flex: 1, 
                   padding: '18px', 
                   borderRadius: '16px', 
-                  backgroundColor: '#f1f5f9', 
-                  color: '#475569', 
+                  backgroundColor: 'var(--color-bg-body)', 
+                  color: 'var(--color-text-muted)', 
                   fontWeight: '700', 
-                  border: '1px solid #e2e8f0', 
+                  border: '1px solid var(--color-border)', 
                   cursor: 'pointer', 
                   fontSize: '1rem',
                   transition: 'background 0.2s'

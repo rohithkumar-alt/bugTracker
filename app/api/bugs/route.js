@@ -3,9 +3,7 @@ import { NextResponse } from 'next/server';
 
 const getSQL = () => {
   const url = process.env.DATABASE_URL;
-  if (!url) {
-    throw new Error("DATABASE_URL is not defined in environment variables.");
-  }
+  if (!url) return null;
   return neon(url);
 };
 
@@ -96,6 +94,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const sql = getSQL();
+  if (!sql) return NextResponse.json({ success: true, bugs: [] });
   try {
     const rows = await sql`SELECT * FROM bugs ORDER BY created_at DESC`;
     return NextResponse.json({ success: true, bugs: rows.map(transformBugRow) });
@@ -107,6 +106,7 @@ export async function GET() {
 
 export async function POST(request) {
   const sql = getSQL();
+  if (!sql) return NextResponse.json({ error: 'DATABASE_URL not configured' }, { status: 503 });
   try {
     const newBug = await request.json();
     const timestamp = new Date().toISOString();
@@ -149,6 +149,7 @@ export async function POST(request) {
 
 export async function PUT(request) {
   const sql = getSQL();
+  if (!sql) return NextResponse.json({ error: 'DATABASE_URL not configured' }, { status: 503 });
   try {
     const updatedBugPayload = await request.json();
     const timestamp = new Date().toISOString();
@@ -190,6 +191,7 @@ export async function PUT(request) {
 
 export async function DELETE(request) {
   const sql = getSQL();
+  if (!sql) return NextResponse.json({ error: 'DATABASE_URL not configured' }, { status: 503 });
   try {
     const { id, ids } = await request.json();
     const targetIds = Array.isArray(ids) ? ids : (id ? [id] : []);

@@ -78,7 +78,7 @@ const DateRangePicker = ({
           alignItems: 'center',
           gap: '10px',
           padding: '8px 14px',
-          backgroundColor: 'white',
+          backgroundColor: 'var(--color-bg-surface)',
           border: `1.5px solid ${isOpen ? '#3b82f6' : '#e2e8f0'}`,
           borderRadius: '10px',
           cursor: 'pointer',
@@ -117,9 +117,9 @@ const DateRangePicker = ({
             top: 'calc(100% + 8px)',
             left: 0,
             width: '280px',
-            backgroundColor: 'white',
+            backgroundColor: 'var(--color-bg-surface)',
             borderRadius: '16px',
-            border: '1px solid #e2e8f0',
+            border: '1px solid var(--color-border)',
             boxShadow: '0 12px 30px -4px rgba(0,0,0,0.12), 0 4px 8px -2px rgba(0,0,0,0.06)',
             padding: '12px',
             zIndex: 1000,
@@ -128,7 +128,7 @@ const DateRangePicker = ({
         >
           {/* Presets Section */}
           <div style={{ marginBottom: '12px' }}>
-            <p style={{ fontSize: '0.65rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', padding: '4px 10px', letterSpacing: '0.1em', marginBottom: '4px' }}>Presets</p>
+            <p style={{ fontSize: '0.65rem', fontWeight: '800', color: 'var(--color-text-light)', textTransform: 'uppercase', padding: '4px 10px', letterSpacing: '0.1em', marginBottom: '4px' }}>Presets</p>
             <button onClick={() => handlePreset(7)} style={presetStyle(false)}>
               <Clock size={14} /> Last 7 Days
             </button>
@@ -144,12 +144,12 @@ const DateRangePicker = ({
           <div style={{ borderTop: '1.5px solid #f1f5f9', paddingTop: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 10px', marginBottom: '12px' }}>
               <Calendar size={13} color="var(--color-primary)" />
-              <p style={{ fontSize: '0.65rem', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Custom Range</p>
+              <p style={{ fontSize: '0.65rem', fontWeight: '800', color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Custom Range</p>
             </div>
             
             <div style={{ padding: '0 4px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                <label style={{ fontSize: '0.6rem', fontWeight: '850', color: '#475569', marginLeft: '2px', textTransform: 'uppercase' }}>From</label>
+                <label style={{ fontSize: '0.6rem', fontWeight: '850', color: 'var(--color-text-muted)', marginLeft: '2px', textTransform: 'uppercase' }}>From</label>
                 <input 
                   type="date" 
                   value={startDate}
@@ -158,18 +158,18 @@ const DateRangePicker = ({
                     width: '100%',
                     padding: '8px 12px',
                     borderRadius: '10px',
-                    border: '1.5px solid #e2e8f0',
+                    border: '1.5px solid var(--color-border)',
                     fontSize: '0.8rem',
                     fontWeight: '600',
-                    color: '#1e293b',
+                    color: 'var(--color-text-main)',
                     outline: 'none',
-                    backgroundColor: '#f8fafc',
+                    backgroundColor: 'var(--color-bg-body)',
                     transition: 'border-color 0.2s'
                   }}
                 />
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                <label style={{ fontSize: '0.6rem', fontWeight: '850', color: '#475569', marginLeft: '2px', textTransform: 'uppercase' }}>To</label>
+                <label style={{ fontSize: '0.6rem', fontWeight: '850', color: 'var(--color-text-muted)', marginLeft: '2px', textTransform: 'uppercase' }}>To</label>
                 <input 
                   type="date" 
                   value={endDate}
@@ -178,12 +178,12 @@ const DateRangePicker = ({
                     width: '100%',
                     padding: '8px 12px',
                     borderRadius: '10px',
-                    border: '1.5px solid #e2e8f0',
+                    border: '1.5px solid var(--color-border)',
                     fontSize: '0.8rem',
                     fontWeight: '600',
-                    color: '#1e293b',
+                    color: 'var(--color-text-main)',
                     outline: 'none',
-                    backgroundColor: '#f8fafc',
+                    backgroundColor: 'var(--color-bg-body)',
                     transition: 'border-color 0.2s'
                   }}
                  />

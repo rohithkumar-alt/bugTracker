@@ -2,15 +2,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Check } from 'lucide-react';
 
-const CustomDropdown = ({ 
-  label, 
-  options = [], 
-  selected, 
-  onSelect, 
+const CustomDropdown = ({
+  label,
+  options = [],
+  selected,
+  onSelect,
   isMulti = false,
   fullWidth = false,
   placeholder = "Select...",
-  style = {}
+  style = {},
+  onClose
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -19,11 +20,12 @@ const CustomDropdown = ({
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
+        if (onClose) onClose();
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [onClose]);
 
   const isSelected = (opt) => {
     if (isMulti) return Array.isArray(selected) && selected.includes(opt);
@@ -32,11 +34,20 @@ const CustomDropdown = ({
 
   const handleSelect = (opt) => {
     onSelect(opt);
-    if (!isMulti) setIsOpen(false);
+    if (!isMulti) {
+      setIsOpen(false);
+      if (onClose) onClose();
+    }
   };
 
   const getTriggerLabel = () => {
-    const val = isMulti ? (selected?.[0] || placeholder) : (selected || placeholder);
+    if (isMulti) {
+      if (!Array.isArray(selected) || selected.length === 0) return label || placeholder;
+      const val = selected[0];
+      const name = typeof val === 'object' ? val.name : val;
+      return selected.length > 1 ? `${name} +${selected.length - 1}` : name;
+    }
+    const val = selected || placeholder;
     return typeof val === 'object' ? val.name : val;
   };
 
@@ -54,19 +65,19 @@ const CustomDropdown = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '8px 12px',
-          backgroundColor: 'white',
-          border: `1.5px solid ${isOpen ? '#3b82f6' : '#e2e8f0'}`,
+          backgroundColor: 'var(--color-bg-surface)',
+          border: `1.5px solid ${isOpen ? 'var(--color-primary)' : 'var(--color-border)'}`,
           borderRadius: '10px',
           cursor: 'pointer',
           minWidth: fullWidth ? '100%' : '160px',
           transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-          boxShadow: isOpen ? '0 0 0 4px rgba(59, 130, 246, 0.1)' : 'none'
+          boxShadow: isOpen ? '0 0 0 4px color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'none'
         }}
       >
         <span style={{ 
           fontSize: '0.85rem', 
           fontWeight: '600', 
-          color: selected ? '#1e293b' : '#94a3b8',
+          color: (isMulti ? (Array.isArray(selected) && selected.length > 0) : selected) ? 'var(--color-text-main)' : 'var(--color-text-light)',
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis'
@@ -78,7 +89,7 @@ const CustomDropdown = ({
           style={{ 
             transition: 'transform 0.3s ease', 
             transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-            color: isOpen ? '#3b82f6' : '#94a3b8' 
+            color: isOpen ? 'var(--color-primary)' : 'var(--color-text-light)'
           }} 
         />
       </div>
@@ -92,10 +103,10 @@ const CustomDropdown = ({
             left: 0,
             width: '100%',
             minWidth: '100%',
-            backgroundColor: 'white',
+            backgroundColor: 'var(--color-bg-surface)',
             borderRadius: '12px',
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 12px 30px -4px rgba(0,0,0,0.12), 0 4px 8px -2px rgba(0,0,0,0.06)',
+            border: '1px solid var(--color-border)',
+            boxShadow: '0 12px 30px -4px rgba(0,0,0,0.2), 0 4px 8px -2px rgba(0,0,0,0.1)',
             padding: '6px',
             zIndex: 1000,
             maxHeight: '300px',
@@ -111,7 +122,7 @@ const CustomDropdown = ({
               style={itemStyle(Array.isArray(selected) && selected.length === 0)}
             >
               <span>{label || 'All'}</span>
-              {(Array.isArray(selected) && selected.length === 0) && <Check size={14} color="#3b82f6" strokeWidth={3} />}
+              {(Array.isArray(selected) && selected.length === 0) && <Check size={14} color="var(--color-primary)" strokeWidth={3} />}
             </div>
           )}
 
@@ -132,8 +143,8 @@ const CustomDropdown = ({
                   {isMulti && (
                     <div style={{ 
                       width: '16px', height: '16px', borderRadius: '4px', 
-                      border: `1.5px solid ${isSelected(opt) ? '#3b82f6' : '#cbd5e1'}`,
-                      backgroundColor: isSelected(opt) ? '#3b82f6' : 'transparent',
+                      border: `1.5px solid ${isSelected(opt) ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                      backgroundColor: isSelected(opt) ? 'var(--color-primary)' : 'transparent',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       transition: 'all 0.2s'
                     }}>
@@ -142,7 +153,7 @@ const CustomDropdown = ({
                   )}
                   <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayText}</span>
                 </div>
-                {!isMulti && isSelected(opt) && <Check size={14} color="#3b82f6" strokeWidth={3} />}
+                {!isMulti && isSelected(opt) && <Check size={14} color="var(--color-primary)" strokeWidth={3} />}
               </div>
             );
           })}
@@ -190,14 +201,14 @@ const itemStyle = (isSelected, isSubItem = false) => ({
   cursor: 'pointer',
   fontSize: isSubItem ? '0.8rem' : '0.85rem',
   fontWeight: isSelected ? '700' : (isSubItem ? '500' : '600'),
-  color: isSelected ? '#3b82f6' : (isSubItem ? '#64748b' : '#475569'),
-  backgroundColor: isSelected ? '#eff6ff' : 'transparent',
+  color: isSelected ? 'var(--color-primary)' : (isSubItem ? 'var(--color-text-light)' : 'var(--color-text-muted)'),
+  backgroundColor: isSelected ? 'color-mix(in srgb, var(--color-primary) 10%, transparent)' : 'transparent',
   opacity: isSubItem && !isSelected ? 0.85 : 1,
   transition: 'all 0.2s ease',
   marginBottom: '2px',
   '&:hover': {
-    backgroundColor: '#f8fafc',
-    color: '#3b82f6'
+    backgroundColor: 'var(--color-bg-body)',
+    color: 'var(--color-primary)'
   }
 });
 

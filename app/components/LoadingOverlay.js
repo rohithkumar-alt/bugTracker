@@ -13,7 +13,7 @@ export default function LoadingOverlay({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#f1f5f9',
+    backgroundColor: 'var(--color-bg-body)',
     zIndex: 9999
   } : {
     width: '100%',
@@ -45,13 +45,13 @@ export default function LoadingOverlay({
           width: '80px',
           height: '80px',
           borderRadius: '24px',
-          backgroundColor: 'white',
+          backgroundColor: 'var(--color-bg-surface)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.05)',
           color: '#2563eb',
-          border: '1px solid #e2e8f0'
+          border: '1px solid var(--color-border)'
         }}
       >
         <Bug size={40} strokeWidth={2.5} />
@@ -64,7 +64,7 @@ export default function LoadingOverlay({
           style={{
             fontSize: '0.8rem',
             fontWeight: '800',
-            color: '#1e293b',
+            color: 'var(--color-text-main)',
             textTransform: 'uppercase',
             letterSpacing: '0.2em'
           }}
@@ -78,7 +78,7 @@ export default function LoadingOverlay({
             transition={{ delay: 0.2 }}
             style={{
               fontSize: '0.72rem',
-              color: '#94a3b8',
+              color: 'var(--color-text-light)',
               fontWeight: '500',
               marginTop: '4px'
             }}

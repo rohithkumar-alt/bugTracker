@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import BugForm from '../components/BugForm';
 import BugDetails from '../components/BugDetails';
 import CustomDropdown from '../components/CustomDropdown';
-import { useAuth } from '../components/AuthProvider';
+import { useAuth, capitalizeName } from '../components/AuthProvider';
 import GlobalHeader from '../components/GlobalHeader';
 import LoadingOverlay from '../components/LoadingOverlay';
 import AdvancedDateFilter from '../components/AdvancedDateFilter';
@@ -17,6 +17,8 @@ function BugManagement() {
 
   const [bugs, setBugs] = useState([]);
   const [filteredBugs, setFilteredBugs] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const BUGS_PER_PAGE = 15;
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -151,8 +153,8 @@ function BugManagement() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/bugs').then(res => res.json()),
-      fetch('/api/settings').then(res => res.json())
+      fetch('/api/bugs').then(res => res.ok ? res.json() : { bugs: [] }),
+      fetch('/api/settings').then(res => res.ok ? res.json() : { projects: [], statuses: [], priorities: [], assignees: [] })
     ]).then(([bugsData, settingsData]) => {
       const arr = Array.isArray(bugsData) ? bugsData : (bugsData.bugs || []);
       setBugs(arr);
@@ -180,7 +182,7 @@ function BugManagement() {
       result = result.filter(b => selectedStatus.includes(b.status));
     }
     if (selectedPriority.length > 0) result = result.filter(b => selectedPriority.includes(b.priority));
-    if (selectedAssignee.length > 0) result = result.filter(b => selectedAssignee.includes(b.assignee));
+    if (selectedAssignee.length > 0) result = result.filter(b => selectedAssignee.includes(toName(b.assignee)));
     if (selectedReporter.length > 0) {
       result = result.filter((b) => {
         const r = b.reporter?.trim() ? b.reporter : 'System';
@@ -215,9 +217,14 @@ function BugManagement() {
     });
 
     setFilteredBugs(result);
+    setCurrentPage(1);
   }, [bugs, selectedProjects, selectedStatus, selectedPriority, selectedAssignee, selectedReporter, globalSearchQuery, startDate, endDate, sortOrder]);
 
+  const [saving, setSaving] = useState(false);
+
   const handleSaveBug = async (bugData, isNew) => {
+    setSaving(true);
+    try {
     if (isNew) {
       const res = await fetch('/api/bugs', {
         method: 'POST',
@@ -246,6 +253,11 @@ function BugManagement() {
     }
     setIsFormOpen(false);
     setEditingBug(null);
+    } catch (err) {
+      showToast("Failed to save bug.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = (bug, e) => {
@@ -253,44 +265,85 @@ function BugManagement() {
     setDeletingBug(bug);
   };
 
-  const confirmDelete = async () => {
+  const [singleDeleting, setSingleDeleting] = useState(false);
+  const [undoDelete, setUndoDelete] = useState(null); // { bug, timer }
+  const undoRef = useRef(null);
+
+  const confirmDelete = () => {
     if (!deletingBug) return;
-    const res = await fetch('/api/bugs', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: deletingBug.id })
-    });
-    if (res.ok) {
-      setBugs(bugs.filter(b => b.id !== deletingBug.id));
-      showToast(`BUG-${String(deletingBug.id).split('-')[1]?.substring(0, 4)?.toUpperCase() || ''} deleted successfully!`);
-      if (selectedBugs.has(deletingBug.id)) {
-        const newSel = new Set(selectedBugs);
-        newSel.delete(deletingBug.id);
-        setSelectedBugs(newSel);
-      }
-    }
+    const bugToDelete = deletingBug;
+    const shortId = `BUG-${String(bugToDelete.id).split('-')[1]?.substring(0, 4)?.toUpperCase() || ''}`;
+
+    // Soft-remove from UI
+    setBugs(prev => prev.filter(b => b.id !== bugToDelete.id));
     setDeletingBug(null);
+
+    // Clear any previous undo timer
+    if (undoRef.current) clearTimeout(undoRef.current);
+
+    // Set undo state — user has 5 seconds to undo
+    const timer = setTimeout(async () => {
+      setUndoDelete(null);
+      try {
+        const res = await fetch('/api/bugs', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: bugToDelete.id })
+        });
+        if (!res.ok) {
+          setBugs(prev => [...prev, bugToDelete]);
+          showToast("Failed to delete. Bug restored.");
+        }
+      } catch {
+        setBugs(prev => [...prev, bugToDelete]);
+        showToast("Network error. Bug restored.");
+      }
+    }, 5000);
+
+    undoRef.current = timer;
+    setUndoDelete({ bug: bugToDelete, shortId });
   };
+
+  const handleUndo = () => {
+    if (!undoDelete) return;
+    if (undoRef.current) clearTimeout(undoRef.current);
+    setBugs(prev => [...prev, undoDelete.bug]);
+    showToast(`${undoDelete.shortId} restored!`);
+    setUndoDelete(null);
+  };
+
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const handleBulkDelete = async () => {
     if (selectedBugs.size === 0) return;
+    setBulkDeleting(true);
     const idsToDelete = Array.from(selectedBugs);
+    const previousBugs = [...bugs];
+    const previousSelected = new Set(selectedBugs);
 
-    // Optimistic UI update
     setBugs(bugs.filter(b => !selectedBugs.has(b.id)));
     setSelectedBugs(new Set());
 
-    const res = await fetch('/api/bugs', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: idsToDelete })
-    });
-    const result = await res.json();
-    if (result.success) {
-      showToast(`${result.deletedCount || idsToDelete.length} bugs permanently deleted!`);
-    } else {
-      showToast("Failed to delete all bugs.");
-      // In production we would restore the bugs here if it completely fails
+    try {
+      const res = await fetch('/api/bugs', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: idsToDelete })
+      });
+      const result = await res.json();
+      if (result.success) {
+        showToast(`${result.deletedCount || idsToDelete.length} bugs permanently deleted!`);
+      } else {
+        setBugs(previousBugs);
+        setSelectedBugs(previousSelected);
+        showToast("Failed to delete bugs. Changes reverted.");
+      }
+    } catch (err) {
+      setBugs(previousBugs);
+      setSelectedBugs(previousSelected);
+      showToast("Network error. Delete reverted.");
+    } finally {
+      setBulkDeleting(false);
     }
   };
 
@@ -303,17 +356,36 @@ function BugManagement() {
   const handleQuickUpdate = async (bug, changes, e) => {
     if (e) e.stopPropagation();
     const updatedBug = { ...bug, ...changes, updatedBy: currentReporter };
-    const res = await fetch('/api/bugs', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedBug)
-    });
-    const result = await res.json();
-    if (result.success) {
-      setBugs(bugs.map(b => b.id === bug.id ? result.bug : b));
-      if (viewingBug && viewingBug.id === bug.id) {
-        setViewingBug(result.bug);
+
+    // Optimistic update — reflect changes immediately in UI
+    setBugs(prev => prev.map(b => b.id === bug.id ? updatedBug : b));
+    if (viewingBug && viewingBug.id === bug.id) {
+      setViewingBug(updatedBug);
+    }
+
+    try {
+      const res = await fetch('/api/bugs', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedBug)
+      });
+      const result = await res.json();
+      if (result.success && result.bug) {
+        // Reconcile with server version (may include server-generated fields)
+        setBugs(prev => prev.map(b => b.id === bug.id ? result.bug : b));
+        if (viewingBug && viewingBug.id === bug.id) {
+          setViewingBug(result.bug);
+        }
+      } else {
+        // Revert on failure
+        setBugs(prev => prev.map(b => b.id === bug.id ? bug : b));
+        if (viewingBug && viewingBug.id === bug.id) setViewingBug(bug);
+        showToast('Update failed. Reverted.');
       }
+    } catch (err) {
+      setBugs(prev => prev.map(b => b.id === bug.id ? bug : b));
+      if (viewingBug && viewingBug.id === bug.id) setViewingBug(bug);
+      showToast('Network error. Reverted.');
     }
   };
 
@@ -327,11 +399,18 @@ function BugManagement() {
     }
   };
 
+  const toName = (val) => {
+    if (typeof val === 'object' && val !== null) return val.name || '';
+    if (typeof val === 'string' && val.startsWith('{')) { try { return JSON.parse(val).name || val; } catch { return val; } }
+    return val || '';
+  };
+
   const getInitials = (name) => {
-    if (!name || name === 'Unassigned' || name === 'Not Assigned') return 'UN';
-    const parts = name.split(' ');
+    const n = toName(name);
+    if (!n || n === 'Unassigned' || n === 'Not Assigned') return 'UN';
+    const parts = n.split(' ');
     if (parts.length > 1) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return name.substring(0, 2).toUpperCase();
+    return n.substring(0, 2).toUpperCase();
   };
 
 
@@ -376,7 +455,8 @@ function BugManagement() {
     link.href = url;
     link.download = `bugs_export_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
-    showToast(`Exported ${filteredBugs.length} bug(s) to CSV (Oldest first)!`);
+    const hasFilters = selectedProjects.length > 0 || selectedStatus.length > 0 || selectedPriority.length > 0 || selectedAssignee.length > 0 || selectedReporter.length > 0 || globalSearchQuery;
+    showToast(`Exported ${filteredBugs.length}${hasFilters ? ' filtered' : ''} bug(s) to CSV!`);
   };
 
   const toggleFilter = (current, setFunc, value) => {
@@ -425,7 +505,7 @@ function BugManagement() {
         position: 'sticky',
         top: 0,
         zIndex: 100,
-        backgroundColor: 'rgba(241, 245, 249, 0.9)', // var(--color-bg-body) with alpha
+        backgroundColor: 'color-mix(in srgb, var(--color-bg-body) 90%, transparent)',
         backdropFilter: 'blur(12px)',
         WebkitBackdropFilter: 'blur(12px)',
         paddingTop: '20px',
@@ -442,14 +522,14 @@ function BugManagement() {
         />
 
         {/* Second bar: Title & Create Action */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
-              <h1 style={{ fontSize: '1.75rem', fontWeight: '600', marginBottom: '0', letterSpacing: '-0.02em' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+              <h1 style={{ fontSize: 'clamp(1.1rem, 3vw, 1.75rem)', fontWeight: '600', marginBottom: '0', letterSpacing: '-0.02em' }}>
                 {selectedProjects.length === 1 ? `${selectedProjects[0]} Bugs` : 'Bug Management'}
               </h1>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
-                <span style={{ backgroundColor: 'rgba(37, 99, 235, 0.1)', color: 'var(--color-primary)', padding: '4px 12px', borderRadius: '99px', fontSize: '0.75rem', fontWeight: '700' }}>
+                <span style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, transparent)', color: 'var(--color-primary)', padding: '4px 12px', borderRadius: '99px', fontSize: '0.75rem', fontWeight: '700' }}>
                   {filteredBugs.length} Total
                 </span>
               </div>
@@ -459,34 +539,34 @@ function BugManagement() {
 
           <button
             className="btn btn-primary"
-            style={{ height: '42px', padding: '0 20px', borderRadius: '12px', fontWeight: '700', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.3)', display: 'flex', alignItems: 'center', gap: '8px' }}
+            style={{ height: '38px', padding: '0 14px', borderRadius: '10px', fontWeight: '700', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.85rem', flexShrink: 0, whiteSpace: 'nowrap' }}
             onClick={() => { setEditingBug(null); setIsFormOpen(true); }}
           >
             <Plus size={18} strokeWidth={2.5} /> Create Bug
           </button>
         </div>
 
-        <div className="filter-bar-group" style={{ marginBottom: '16px', width: 'auto', display: 'inline-flex' }}>
+        <div className="filter-bar-group" style={{ marginBottom: '16px' }}>
           <CustomDropdown label="All Reporter" options={reporterOptions} selected={selectedReporter} onSelect={(val) => toggleFilter(selectedReporter, setSelectedReporter, val)} isMulti />
           <CustomDropdown label="All Project" options={settings.projects} selected={selectedProjects} onSelect={(val) => toggleFilter(selectedProjects, setSelectedProjects, val)} isMulti />
           <CustomDropdown label="All Status" options={settings.statuses} selected={selectedStatus} onSelect={(val) => toggleFilter(selectedStatus, setSelectedStatus, val)} isMulti />
           <CustomDropdown label="All Priority" options={settings.priorities} selected={selectedPriority} onSelect={(val) => toggleFilter(selectedPriority, setSelectedPriority, val)} isMulti />
-          <CustomDropdown label="All Assignee" options={settings.assignees} selected={selectedAssignee} onSelect={(val) => toggleFilter(selectedAssignee, setSelectedAssignee, val)} isMulti />
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto', paddingLeft: '12px', borderLeft: '1px solid var(--color-border)' }}>
+          <CustomDropdown label="All Assignee" options={(settings.assignees || []).map(a => typeof a === 'object' ? a.name : a)} selected={selectedAssignee} onSelect={(val) => toggleFilter(selectedAssignee, setSelectedAssignee, typeof val === 'object' ? val.name : val)} isMulti />
+
+          <div style={{ flexShrink: 0, marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '12px', borderLeft: '1px solid var(--color-border)' }}>
             <button
               className="btn btn-outline"
               onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
-              style={{ height: '36px', padding: '0 12px', background: 'white', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontWeight: '700', color: 'var(--color-primary)', borderRadius: '8px' }}
+              style={{ height: '36px', padding: '0 12px', background: 'var(--color-bg-surface)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontWeight: '700', color: 'var(--color-primary)', borderRadius: '8px', whiteSpace: 'nowrap' }}
               title={sortOrder === 'desc' ? "Newest First" : "Oldest First"}
             >
               <ArrowUpDown size={15} /> {sortOrder === 'desc' ? 'Newest' : 'Oldest'}
             </button>
 
-            <button 
-              className="btn btn-outline" 
-              style={{ height: '36px', padding: '0 12px', background: 'white', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontWeight: '700', borderRadius: '8px' }} 
-              onClick={downloadCSV} 
+            <button
+              className="btn btn-outline"
+              style={{ height: '36px', padding: '0 12px', background: 'var(--color-bg-surface)', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.82rem', fontWeight: '700', borderRadius: '8px', whiteSpace: 'nowrap' }}
+              onClick={downloadCSV}
               title="Export to CSV"
             >
               <Download size={16} /> Download as CSV
@@ -504,7 +584,7 @@ function BugManagement() {
               if (selectionMode) { setSelectedBugs(new Set()); setShowSelectionPopup(false); }
             }}
             style={{
-              height: '38px', padding: '0 16px', background: selectionMode ? '#fef2f2' : 'white',
+              height: '38px', padding: '0 16px', background: selectionMode ? '#fef2f2' : 'var(--color-bg-surface)',
               color: selectionMode ? '#ef4444' : 'var(--color-text-muted)',
               border: selectionMode ? '1px solid #fee2e2' : '1px solid #e2e8f0',
               display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', fontWeight: '700',
@@ -578,13 +658,23 @@ function BugManagement() {
         {filteredBugs.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '64px', opacity: 0.5 }}>
             <BugIcon size={48} style={{ marginBottom: '16px', margin: '0 auto' }} color="var(--color-text-muted)" />
-            <h2 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>No bugs found!</h2>
+            {bugs.length === 0 ? (
+              <>
+                <h2 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>No bugs yet!</h2>
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Press <strong>Ctrl+N</strong> or the <strong>+ New Bug</strong> button to create your first report.</p>
+              </>
+            ) : (
+              <>
+                <h2 style={{ fontSize: '1.2rem', marginBottom: '8px' }}>No matching bugs</h2>
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Try adjusting your filters or search terms.</p>
+              </>
+            )}
           </div>
         ) : (
           <div>
-            {filteredBugs.map(bug => (
+            {filteredBugs.slice((currentPage - 1) * BUGS_PER_PAGE, currentPage * BUGS_PER_PAGE).map(bug => (
               <div key={bug.id} className="list-item"
-                style={{ position: 'relative', cursor: 'pointer', display: 'flex' }}
+                style={{ position: 'relative', cursor: 'pointer', display: 'flex', borderLeft: bug.endDate && new Date(bug.endDate) < new Date() && !['Resolved', 'Closed'].includes(bug.status) ? '3px solid #ef4444' : undefined }}
                 onMouseEnter={() => setHoveredBugId(bug.id)}
                 onMouseLeave={() => setHoveredBugId(null)}
                 onClick={(e) => {
@@ -635,7 +725,7 @@ function BugManagement() {
                     <span className="badge badge-status-pro" style={{ marginLeft: '6px' }}>{bug.status}</span>
                     <span className="badge badge-tag" style={{ marginLeft: '6px' }}>{bug.project || 'General'}</span>
                     {bug.module && bug.module !== 'General' && bug.module !== 'Not Assigned' && (
-                      <span className="badge badge-tag-pro" style={{ marginLeft: '6px', backgroundColor: 'rgba(59, 130, 246, 0.1)', color: 'var(--color-primary)', border: '1px solid rgba(59, 130, 246, 0.2)', fontSize: '0.65rem' }}>
+                      <span className="badge badge-tag-pro" style={{ marginLeft: '6px', backgroundColor: 'color-mix(in srgb, var(--color-primary) 10%, transparent)', color: 'var(--color-primary)', border: '1px solid color-mix(in srgb, var(--color-primary) 20%, transparent)', fontSize: '0.65rem' }}>
                         {getFullModulePath(bug)}
                       </span>
                     )}
@@ -644,12 +734,63 @@ function BugManagement() {
                   <p className="item-desc" style={{ fontSize: '0.86rem' }}>{bug.description}</p>
                   <div className="item-footer" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div className="avatar" style={{ backgroundColor: '#6366f1', width: '22px', height: '22px', fontSize: '0.65rem' }}>{getInitials(bug.assignee)}</div>
-                    <span style={{ fontWeight: '600' }}>{bug.assignee}</span>
+                    <span style={{ fontWeight: '600' }}>{capitalizeName(toName(bug.assignee))}</span>
                     <span>Created {formatDate(bug.createdAt)}</span>
+                    {bug.endDate && new Date(bug.endDate) < new Date() && !['Resolved', 'Closed'].includes(bug.status) && (
+                      <span style={{ padding: '2px 8px', backgroundColor: '#fef2f2', color: '#dc2626', fontSize: '0.65rem', fontWeight: '700', borderRadius: '6px', border: '1px solid #fecaca' }}>OVERDUE</span>
+                    )}
                   </div>
                 </div>
               </div>
             ))}
+            {/* Pagination */}
+            {filteredBugs.length > BUGS_PER_PAGE && (() => {
+              const totalPages = Math.ceil(filteredBugs.length / BUGS_PER_PAGE);
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '24px 0', marginTop: '8px' }}>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    style={{
+                      padding: '8px 16px', borderRadius: '10px', border: '1px solid var(--color-border)',
+                      backgroundColor: currentPage === 1 ? '#f8fafc' : 'white', cursor: currentPage === 1 ? 'default' : 'pointer',
+                      fontWeight: '600', fontSize: '0.8rem', color: currentPage === 1 ? '#cbd5e1' : '#475569'
+                    }}
+                  >Prev</button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+                    .reduce((acc, p, i, arr) => {
+                      if (i > 0 && p - arr[i - 1] > 1) acc.push('...');
+                      acc.push(p);
+                      return acc;
+                    }, [])
+                    .map((p, i) => typeof p === 'string' ? (
+                      <span key={`dot-${i}`} style={{ color: 'var(--color-text-light)', fontSize: '0.8rem' }}>{p}</span>
+                    ) : (
+                      <button key={p} onClick={() => setCurrentPage(p)} style={{
+                        width: '36px', height: '36px', borderRadius: '10px',
+                        border: p === currentPage ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
+                        backgroundColor: p === currentPage ? '#eff6ff' : 'white',
+                        color: p === currentPage ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                        fontWeight: '700', fontSize: '0.8rem', cursor: 'pointer'
+                      }}>{p}</button>
+                    ))
+                  }
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    style={{
+                      padding: '8px 16px', borderRadius: '10px', border: '1px solid var(--color-border)',
+                      backgroundColor: currentPage === totalPages ? '#f8fafc' : 'white', cursor: currentPage === totalPages ? 'default' : 'pointer',
+                      fontWeight: '600', fontSize: '0.8rem', color: currentPage === totalPages ? '#cbd5e1' : '#475569'
+                    }}
+                  >Next</button>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--color-text-light)', marginLeft: '12px' }}>
+                    {(currentPage - 1) * BUGS_PER_PAGE + 1}–{Math.min(currentPage * BUGS_PER_PAGE, filteredBugs.length)} of {filteredBugs.length}
+                  </span>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -679,6 +820,7 @@ function BugManagement() {
           showToast={showToast}
           currentReporter={currentReporter}
           bugs={bugs}
+          saving={saving}
         />
 
         {/* Delete Modal */}
@@ -686,10 +828,18 @@ function BugManagement() {
           <div className="modal-overlay" style={{ zIndex: 2000 }} onClick={() => setDeletingBug(null)}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', padding: '32px', textAlign: 'center' }}>
               <h3 style={{ marginBottom: '8px' }}>Delete Bug?</h3>
+              <div style={{ marginBottom: '16px', padding: '12px', borderRadius: '8px', backgroundColor: 'var(--color-bg-body)', border: '1px solid var(--color-border)' }}>
+                <div style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--color-primary)', letterSpacing: '0.05em', marginBottom: '4px' }}>
+                  BUG-{String(deletingBug.id).split('-')[1]?.substring(0, 4)?.toUpperCase() || ''}
+                </div>
+                <div style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--color-text-main)', wordBreak: 'break-word' }}>
+                  {deletingBug.title}
+                </div>
+              </div>
               <p style={{ marginBottom: '28px', color: 'var(--color-text-muted)' }}>This action cannot be undone.</p>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setDeletingBug(null)}>Cancel</button>
-                <button className="btn btn-danger" style={{ flex: 1, backgroundColor: '#ef4444', color: 'white' }} onClick={confirmDelete}>Delete</button>
+                <button className="btn btn-danger" style={{ flex: 1, backgroundColor: '#ef4444', color: 'white', opacity: singleDeleting ? 0.7 : 1 }} onClick={confirmDelete} disabled={singleDeleting}>{singleDeleting ? 'Deleting...' : 'Delete'}</button>
               </div>
             </div>
           </div>
@@ -697,12 +847,32 @@ function BugManagement() {
 
         {/* Toast */}
         <div style={{
-          position: 'fixed', bottom: '32px', right: '32px', backgroundColor: 'white', padding: '12px 24px', borderRadius: '12px',
+          position: 'fixed', bottom: '32px', right: '32px', backgroundColor: 'var(--color-bg-surface)', padding: '12px 24px', borderRadius: '12px',
           boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', zIndex: 9999, transition: 'all 0.3s',
           transform: toast.visible ? 'translateY(0)' : 'translateY(100px)', opacity: toast.visible ? 1 : 0
         }}>
           {toast.message}
         </div>
+
+        {/* Undo Delete Toast */}
+        {undoDelete && (
+          <div style={{
+            position: 'fixed', bottom: '32px', left: '50%', transform: 'translateX(-50%)',
+            backgroundColor: 'var(--color-bg-surface)', color: 'var(--color-text-main)',
+            padding: '14px 24px', borderRadius: '14px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+            border: '1px solid var(--color-border)',
+            zIndex: 10000, display: 'flex', alignItems: 'center', gap: '16px',
+            animation: 'fadeIn 0.3s ease-out'
+          }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: '600' }}>{undoDelete.shortId} deleted</span>
+            <button onClick={handleUndo} style={{
+              padding: '6px 16px', borderRadius: '8px', border: 'none',
+              backgroundColor: 'var(--color-primary)', color: 'white', fontWeight: '800',
+              fontSize: '0.8rem', cursor: 'pointer'
+            }}>Undo</button>
+          </div>
+        )}
 
         {/* Floating Bulk Action Bar */}
         {selectedBugs.size > 0 && (
@@ -711,8 +881,8 @@ function BugManagement() {
             {showSelectionPopup && (
               <div style={{
                 position: 'fixed', bottom: '110px', left: '50%', transform: 'translateX(-50%)',
-                backgroundColor: 'rgba(255,255,255,0.95)', borderRadius: '16px',
-                border: '1px solid #e2e8f0', boxShadow: '0 20px 40px -8px rgba(0,0,0,0.15)',
+                backgroundColor: 'var(--color-bg-surface)', borderRadius: '16px',
+                border: '1px solid var(--color-border)', boxShadow: '0 20px 40px -8px rgba(0,0,0,0.15)',
                 backdropFilter: 'blur(16px)', zIndex: 7001,
                 minWidth: '320px', maxWidth: '480px', maxHeight: '260px',
                 overflowY: 'auto', padding: '8px',
@@ -726,11 +896,11 @@ function BugManagement() {
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                     <span style={{
                       fontSize: '0.72rem', fontWeight: '700', color: 'var(--color-primary)',
-                      backgroundColor: '#eff6ff', padding: '2px 8px', borderRadius: '99px',
+                      backgroundColor: 'color-mix(in srgb, var(--color-primary) 8%, var(--color-bg-surface))', padding: '2px 8px', borderRadius: '99px',
                       border: '1px solid #bfdbfe', whiteSpace: 'nowrap', flexShrink: 0
                     }}>{b.id}</span>
                     <span style={{
-                      fontSize: '0.88rem', color: '#1e293b', fontWeight: '600', flex: 1,
+                      fontSize: '0.88rem', color: 'var(--color-text-main)', fontWeight: '600', flex: 1,
                       overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
                     }}>{b.title}</span>
                     <button onClick={() => {
@@ -738,7 +908,7 @@ function BugManagement() {
                       newSet.delete(b.id);
                       setSelectedBugs(newSet);
                       if (newSet.size === 0) setShowSelectionPopup(false);
-                    }} style={{ flexShrink: 0, color: '#94a3b8', padding: '4px', borderRadius: '6px', lineHeight: 1 }}
+                    }} style={{ flexShrink: 0, color: 'var(--color-text-light)', padding: '4px', borderRadius: '6px', lineHeight: 1 }}
                       onMouseEnter={(e) => e.currentTarget.style.color = '#ef4444'}
                       onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}>
                       <X size={14} />
@@ -755,7 +925,7 @@ function BugManagement() {
                 display: 'flex', justifyContent: 'center', zIndex: 7000, pointerEvents: 'none'
               }}>
                 <div style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.85)', color: '#0f172a', padding: '12px 24px', borderRadius: '20px',
+                  backgroundColor: 'var(--color-bg-surface)', color: 'var(--color-text-main)', padding: '12px 24px', borderRadius: '20px',
                   display: 'flex', alignItems: 'center', gap: '20px', pointerEvents: 'auto',
                   backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
                   border: '1px solid rgba(226, 232, 240, 0.8)',
@@ -769,27 +939,27 @@ function BugManagement() {
                     <div style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       width: '24px', height: '24px', borderRadius: '8px',
-                      backgroundColor: 'var(--color-primary)', color: 'white',
+                      backgroundColor: '#2563eb', color: 'white',
                       fontSize: '0.8rem', boxShadow: '0 2px 4px rgba(37,99,235,0.3)'
                     }}>
                       {selectedBugs.size}
                     </div>
                     Selected
-                    <ChevronDown size={14} style={{ color: '#64748b', transform: showSelectionPopup ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
+                    <ChevronDown size={14} style={{ color: 'var(--color-text-muted)', transform: showSelectionPopup ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.2s' }} />
                   </span>
-                  <div style={{ width: '1px', height: '24px', backgroundColor: '#e2e8f0' }}></div>
+                  <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--color-border)' }}></div>
                   <button style={{
                     color: '#ef4444', fontWeight: '700', fontSize: '0.9rem',
                     display: 'flex', alignItems: 'center', gap: '6px',
                     padding: '6px 14px', borderRadius: '10px',
-                    backgroundColor: '#fef2f2', transition: 'all 0.2s', border: '1px solid #fee2e2'
-                  }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'} onClick={handleBulkDelete}>
-                    <Trash2 size={16} /> Delete
+                    backgroundColor: 'color-mix(in srgb, #ef4444 12%, var(--color-bg-surface))', transition: 'all 0.2s', border: '1px solid color-mix(in srgb, #ef4444 25%, var(--color-bg-surface))'
+                  , opacity: bulkDeleting ? 0.7 : 1}} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'color-mix(in srgb, #ef4444 22%, var(--color-bg-surface))'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'color-mix(in srgb, #ef4444 12%, var(--color-bg-surface))'} onClick={handleBulkDelete} disabled={bulkDeleting}>
+                    <Trash2 size={16} /> {bulkDeleting ? 'Deleting...' : 'Delete'}
                   </button>
                   <button style={{
-                    color: '#64748b', fontSize: '0.9rem', fontWeight: '600',
+                    color: 'var(--color-text-muted)', fontSize: '0.9rem', fontWeight: '600',
                     padding: '6px 12px', borderRadius: '10px', transition: 'all 0.2s'
-                  }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'} onClick={() => { setSelectedBugs(new Set()); setShowSelectionPopup(false); setSelectionMode(false); }}>
+                  }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--color-text-main) 8%, var(--color-bg-surface))'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'} onClick={() => { setSelectedBugs(new Set()); setShowSelectionPopup(false); setSelectionMode(false); }}>
                     Cancel
                   </button>
                 </div>

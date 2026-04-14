@@ -1,7 +1,10 @@
 import { neon } from '@neondatabase/serverless';
 import { NextResponse } from 'next/server';
 
-const getSQL = () => neon(process.env.DATABASE_URL);
+const getSQL = () => {
+  if (!process.env.DATABASE_URL) return null;
+  return neon(process.env.DATABASE_URL);
+};
 
 /**
  * Maps database snake_case fields to UI camelCase fields
@@ -22,6 +25,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
   const sql = getSQL();
+  if (!sql) return NextResponse.json({ success: true, notifications: [] });
   try {
     const { searchParams } = new URL(request.url);
     const user = searchParams.get('user');
@@ -43,6 +47,7 @@ export async function GET(request) {
 
 export async function POST(request) {
   const sql = getSQL();
+  if (!sql) return NextResponse.json({ error: 'DATABASE_URL not configured' }, { status: 503 });
   try {
     const { target_user, actor, bug_id, message } = await request.json();
     await sql`
@@ -58,6 +63,7 @@ export async function POST(request) {
 
 export async function PATCH(request) {
   const sql = getSQL();
+  if (!sql) return NextResponse.json({ error: 'DATABASE_URL not configured' }, { status: 503 });
   try {
     const payload = await request.json();
     

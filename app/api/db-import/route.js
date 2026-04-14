@@ -3,10 +3,14 @@ import { NextResponse } from 'next/server';
 import path from 'path';
 import fs from 'fs/promises';
 
-const getSQL = () => neon(process.env.DATABASE_URL);
+const getSQL = () => {
+  if (!process.env.DATABASE_URL) return null;
+  return neon(process.env.DATABASE_URL);
+};
 
 export async function GET() {
   const sql = getSQL();
+  if (!sql) return NextResponse.json({ error: 'DATABASE_URL not configured' }, { status: 503 });
   try {
     const seedPath = path.join(process.cwd(), 'database', 'bugs_seed.json');
     const seedData = await fs.readFile(seedPath, 'utf8');
