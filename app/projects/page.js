@@ -79,10 +79,10 @@ export default function ProjectsPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '24px' }}>
         {statsList.map(({ name, stats }) => (
           <div key={name} className="card project-card" style={{
-            backgroundColor: 'white',
+            backgroundColor: 'var(--color-bg-surface)',
             borderRadius: '16px',
             padding: '24px',
-            border: '1px solid #e2e8f0',
+            border: '1px solid var(--color-border)',
             transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             position: 'relative',
             overflow: 'hidden'
@@ -93,28 +93,28 @@ export default function ProjectsPage() {
               </div>
             </div>
 
-            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{name}</div>
-            <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>{name}</div>
+            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: stats.critical > 0 ? '#ef4444' : '#22c55e' }}></div>
               {stats.critical > 0 ? `${stats.critical} Critical Issues` : 'System Healthy'}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
-              <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
-                <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700', marginBottom: '4px' }}>Total Issues</div>
-                <div style={{ fontSize: '1.2rem', fontWeight: '600', color: '#1e293b' }}>{stats.total}</div>
+              <div style={{ padding: '12px', backgroundColor: 'var(--color-bg-body)', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '4px' }}>Total Issues</div>
+                <div style={{ fontSize: '1.2rem', fontWeight: '600', color: 'var(--color-text-main)' }}>{stats.total}</div>
               </div>
-              <div style={{ padding: '12px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
-                <div style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700', marginBottom: '4px' }}>High/Crit</div>
+              <div style={{ padding: '12px', backgroundColor: 'var(--color-bg-body)', borderRadius: '12px', border: '1px solid var(--color-border-light)' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-light)', textTransform: 'uppercase', fontWeight: '700', marginBottom: '4px' }}>High/Crit</div>
                 <div style={{ fontSize: '1.2rem', fontWeight: '600', color: '#ef4444' }}>{stats.critical + stats.high}</div>
               </div>
             </div>
 
             <div style={{ marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b' }}>Resolution Progress</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--color-text-muted)' }}>Resolution Progress</span>
               <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--color-primary)' }}>{stats.progress}%</span>
             </div>
-            <div style={{ height: '8px', width: '100%', backgroundColor: '#f1f5f9', borderRadius: '4px', overflow: 'hidden', marginBottom: '24px' }}>
+            <div style={{ height: '8px', width: '100%', backgroundColor: 'var(--color-bg-body)', borderRadius: '4px', overflow: 'hidden', marginBottom: '24px' }}>
               <div style={{ width: `${stats.progress}%`, height: '100%', backgroundColor: 'var(--color-primary)', borderRadius: '4px', transition: 'width 1s ease-out' }}></div>
             </div>
 
@@ -124,8 +124,8 @@ export default function ProjectsPage() {
                 width: '100%',
                 padding: '12px',
                 borderRadius: '10px',
-                backgroundColor: '#f8fafc',
-                border: '1px solid #e2e8f0',
+                backgroundColor: 'var(--color-bg-body)',
+                border: '1px solid var(--color-border)',
                 color: 'var(--color-text-main)',
                 fontSize: '0.85rem',
                 fontWeight: '700',

@@ -3,7 +3,15 @@ import { useState, useEffect } from 'react';
 import { X, Plus, Trash2, Pencil, Check, ExternalLink, Copy, AlertCircle } from 'lucide-react';
 import CustomDropdown from './CustomDropdown';
 
-export default function BugForm({ isOpen, onClose, onSave, settings, initialData = null, showToast, currentReporter, bugs = [] }) {
+const getAssigneeName = (a) => {
+  if (typeof a === 'object' && a !== null) return a.name || '';
+  if (typeof a === 'string' && a.startsWith('{')) { try { return JSON.parse(a).name || a; } catch { return a; } }
+  return a || '';
+};
+
+export default function BugForm({ isOpen, onClose, onSave, settings, initialData = null, showToast, currentReporter, bugs = [], saving = false }) {
+  const assigneeNames = (settings?.assignees || []).map(a => getAssigneeName(a));
+
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -13,7 +21,7 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
     priority: settings?.priorities?.[0] || "Low",
     severity: "Minor",
     project: "Pharmacy ERP",
-    assignee: settings?.assignees?.[0] || "Unassigned",
+    assignee: getAssigneeName(settings?.assignees?.[0]) || "Unassigned",
     reporter: currentReporter || "rohith",
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
@@ -118,7 +126,7 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
         priority: settings?.priorities?.[0] || "Low",
         severity: "Minor",
         project: "Pharmacy ERP",
-        assignee: settings?.assignees?.[0] || "Unassigned",
+        assignee: getAssigneeName(settings?.assignees?.[0]) || "Unassigned",
         reporter: currentReporter || "rohith",
         startDate: new Date().toISOString().split('T')[0],
         endDate: new Date(Date.now() + 86400000).toISOString().split('T')[0],
@@ -203,7 +211,7 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
 
   return (
     <div className="modal-overlay" onClick={handleSafeClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '820px', padding: '0', borderRadius: '12px' }}>
+      <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(820px, 95vw)', padding: '0', borderRadius: '12px' }}>
 
         <div style={{ padding: '20px 24px 12px 24px', position: 'relative' }}>
           <h2 style={{ fontSize: '1.2rem', fontWeight: '700', marginBottom: '4px', color: 'var(--color-text-main)' }}>
@@ -273,9 +281,9 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '16px', marginBottom: '20px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: '#475569', marginBottom: '6px', textTransform: 'uppercase' }}>Expected Result</label>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: '700', color: 'var(--color-text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Expected Result</label>
                 <textarea
                   rows="2"
                   style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--color-border)', fontSize: '0.85rem' }}
@@ -298,7 +306,7 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
 
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: initialData ? 'repeat(3, 1fr)' : 'repeat(2, 1fr)', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))',
               gap: '12px', 
               marginBottom: '16px' 
             }}>
@@ -336,7 +344,7 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
               )}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: '12px', marginBottom: '24px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-text-main)', marginBottom: '6px' }}>Project Domain</label>
                 <CustomDropdown 
@@ -366,13 +374,13 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '12px', marginBottom: '24px' }}>
                 <div className="form-group" style={{ display: 'flex', flexDirection: 'column' }}>
                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-text-main)', marginBottom: '6px' }}>Assign to <span style={{ color: '#ef4444' }}>*</span></label>
-                    <CustomDropdown 
-                      options={settings.assignees}
-                      selected={formData.assignee}
-                      onSelect={(val) => setFormData({ ...formData, assignee: val })}
+                    <CustomDropdown
+                      options={assigneeNames}
+                      selected={getAssigneeName(formData.assignee)}
+                      onSelect={(val) => setFormData({ ...formData, assignee: getAssigneeName(val) })}
                       placeholder="Select developer"
                       fullWidth
                     />
@@ -399,7 +407,7 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
 
             {/* Bug Connections Section */}
             <div style={{ 
-              backgroundColor: '#f8fafc', 
+              backgroundColor: 'var(--color-bg-body)', 
               padding: '24px', 
               borderRadius: '16px', 
               border: '1px solid var(--color-border)', 
@@ -409,7 +417,7 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
                 Technical Linkage & Cluster
               </h4>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', marginBottom: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '16px', marginBottom: '24px' }}>
                 <div className="form-group">
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-text-main)', marginBottom: '8px' }}>GitHub PR Artifacts</label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -428,7 +436,7 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
                         <button type="button" onClick={() => setFormData({ ...formData, githubPr: formData.githubPr.filter((_, i) => i !== idx) })} style={{ padding: '8px', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer' }}><Trash2 size={16} /></button>
                       </div>
                     ))}
-                    <button type="button" onClick={() => setFormData({ ...formData, githubPr: [...formData.githubPr, ""] })} style={{ border: '1px dashed #cbd5e1', borderRadius: '8px', padding: '10px', fontSize: '0.8rem', color: '#64748b', backgroundColor: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><Plus size={14} /> Add PR Link</button>
+                    <button type="button" onClick={() => setFormData({ ...formData, githubPr: [...formData.githubPr, ""] })} style={{ border: '1px dashed #cbd5e1', borderRadius: '8px', padding: '10px', fontSize: '0.8rem', color: 'var(--color-text-muted)', backgroundColor: 'var(--color-bg-surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><Plus size={14} /> Add PR Link</button>
                   </div>
                 </div>
 
@@ -436,7 +444,7 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
                   <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: '600', color: 'var(--color-text-main)', marginBottom: '8px' }}>CURL Context (Reproduction)</label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                     {formData.curl.map((snippet, idx) => (
-                      <div key={idx} style={{ padding: '10px', backgroundColor: 'white', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div key={idx} style={{ padding: '10px', backgroundColor: 'var(--color-bg-surface)', borderRadius: '8px', border: '1px solid var(--color-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <code style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--color-primary)' }}>CURL {idx + 1}</code>
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <button type="button" onClick={() => setEditingCurl({ index: idx, value: snippet })} style={{ padding: '4px', color: 'var(--color-primary)', background: 'none', border: 'none', cursor: 'pointer' }}><Pencil size={14} /></button>
@@ -444,7 +452,7 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
                         </div>
                       </div>
                     ))}
-                    <button type="button" onClick={() => setEditingCurl({ index: formData.curl.length, value: "" })} style={{ border: '1px dashed #cbd5e1', borderRadius: '8px', padding: '10px', fontSize: '0.8rem', color: '#64748b', backgroundColor: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><Plus size={14} /> Add CURL Script</button>
+                    <button type="button" onClick={() => setEditingCurl({ index: formData.curl.length, value: "" })} style={{ border: '1px dashed #cbd5e1', borderRadius: '8px', padding: '10px', fontSize: '0.8rem', color: 'var(--color-text-muted)', backgroundColor: 'var(--color-bg-surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}><Plus size={14} /> Add CURL Script</button>
                   </div>
                 </div>
               </div>
@@ -456,14 +464,14 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
                     formData.relatedBugs.map(rid => {
                       const relatedBug = bugs.find(b => b.id === rid);
                       return (
-                        <div key={rid} className="badge badge-status-pro" style={{ padding: '6px 12px', backgroundColor: 'white', border: '1px solid #e2e8f0', gap: '8px' }}>
+                        <div key={rid} className="badge badge-status-pro" style={{ padding: '6px 12px', backgroundColor: 'var(--color-bg-surface)', border: '1px solid var(--color-border)', gap: '8px' }}>
                           <span style={{ fontFamily: 'monospace', fontWeight: '700' }}>{relatedBug ? (String(relatedBug.id).startsWith("BUG-") ? relatedBug.id : `BUG-${String(relatedBug.id).split('-')[0].substring(0,4).toUpperCase()}`) : rid}</span>
                           <X size={14} style={{ cursor: 'pointer', opacity: 0.5 }} onClick={() => setFormData({ ...formData, relatedBugs: formData.relatedBugs.filter(i => i !== rid) })} />
                         </div>
                       );
                     })
                   ) : (
-                    <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic' }}>No sister bugs currently linked.</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-light)', fontStyle: 'italic' }}>No sister bugs currently linked.</span>
                   )}
                 </div>
                 <CustomDropdown 
@@ -493,7 +501,7 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
             display: 'flex',
             justifyContent: 'flex-end',
             gap: '8px',
-            backgroundColor: '#fff',
+            backgroundColor: 'var(--color-bg-surface)',
             borderBottomLeftRadius: '12px',
             borderBottomRightRadius: '12px'
           }}>
@@ -506,7 +514,7 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
             </button>
             <button
               type="submit"
-              style={{ padding: '10px 24px', borderRadius: '6px', border: 'none', backgroundColor: 'var(--color-primary)', fontWeight: '600', fontSize: '0.85rem', color: '#fff', cursor: 'pointer' }}
+              style={{ padding: '10px 24px', borderRadius: '6px', border: 'none', backgroundColor: '#2563eb', fontWeight: '600', fontSize: '0.85rem', color: '#fff', cursor: 'pointer' }}
             >
               {initialData ? 'Update the Bug' : 'Create Bug report'}
             </button>
@@ -522,20 +530,20 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
             width: '95%', 
             padding: '40px', 
             borderRadius: '28px',
-            backgroundColor: 'white',
+            backgroundColor: 'var(--color-bg-surface)',
             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
             animation: 'modalSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '28px' }}>
               <div>
-                <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: '#1e293b' }}>
+                <h3 style={{ fontSize: '1.4rem', fontWeight: '800', color: 'var(--color-text-main)' }}>
                   {formData.curl[editingCurl.index] ? 'Edit Technical Sequence' : 'Add Technical Sequence'}
                 </h3>
-                <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '4px' }}>Input your CURL command or technical reproduction script below.</p>
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '4px' }}>Input your CURL command or technical reproduction script below.</p>
               </div>
               <button 
                 onClick={() => setEditingCurl(null)} 
-                style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#f1f5f9', border: 'none', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{ width: '40px', height: '40px', borderRadius: '10px', background: '#f1f5f9', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
                 <X size={20} />
               </button>
@@ -547,11 +555,11 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
                 minHeight: '400px',
                 padding: '24px',
                 borderRadius: '20px',
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--color-border)',
                 fontFamily: 'var(--font-mono)',
                 fontSize: '0.9rem',
-                backgroundColor: '#f8fafc',
-                color: '#334155',
+                backgroundColor: 'var(--color-bg-body)',
+                color: 'var(--color-text-main)',
                 lineHeight: '1.7',
                 outline: 'none',
                 boxShadow: 'inset 0 2px 4px 0 rgba(0,0,0,0.02)',
@@ -616,7 +624,7 @@ export default function BugForm({ isOpen, onClose, onSave, settings, initialData
                   handleSave();
                 }}
               >
-                Save and Close
+                {saving ? 'Saving...' : 'Save and Close'}
               </button>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 <button

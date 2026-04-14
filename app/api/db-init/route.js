@@ -1,10 +1,14 @@
 import { neon } from '@neondatabase/serverless';
 import { NextResponse } from 'next/server';
 
-const getSQL = () => neon(process.env.DATABASE_URL);
+const getSQL = () => {
+  if (!process.env.DATABASE_URL) return null;
+  return neon(process.env.DATABASE_URL);
+};
 
 export async function GET() {
   const sql = getSQL();
+  if (!sql) return NextResponse.json({ error: 'DATABASE_URL not configured' }, { status: 503 });
   try {
     // 1. Create BUGS table with full production schema
     await sql`

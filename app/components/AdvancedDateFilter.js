@@ -137,17 +137,17 @@ const AdvancedDateFilter = ({
         onClick={() => setIsOpen(!isOpen)}
         style={{
           display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px',
-          backgroundColor: (startDate || endDate) ? '#eff6ff' : 'white',
+          backgroundColor: (startDate || endDate) ? 'color-mix(in srgb, #3b82f6 10%, var(--color-bg-surface))' : 'var(--color-bg-surface)',
           border: `1.5px solid ${isOpen ? '#3b82f6' : (startDate || endDate ? '#3b82f6' : '#e2e8f0')}`,
           borderRadius: '12px', cursor: 'pointer', minWidth: '220px', transition: 'all 0.2s',
           boxShadow: isOpen ? '0 0 0 4px rgba(59, 130, 246, 0.1)' : 'none'
         }}
       >
         <CalendarIcon size={16} color={(startDate || endDate) ? '#3b82f6' : '#94a3b8'} />
-        <span style={{ fontSize: '0.82rem', fontWeight: '700', color: (startDate || endDate) ? '#1e293b' : '#94a3b8', flex: 1 }}>
+        <span style={{ fontSize: '0.82rem', fontWeight: '700', color: (startDate || endDate) ? 'var(--color-text-main)' : 'var(--color-text-light)', flex: 1 }}>
           {getTriggerLabel()}
         </span>
-        <ChevronDown size={14} style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.3s', color: '#94a3b8' }} />
+        <ChevronDown size={14} style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 0.3s', color: 'var(--color-text-light)' }} />
       </div>
 
       {isOpen && (
@@ -155,7 +155,7 @@ const AdvancedDateFilter = ({
           className="crisply-popover"
           style={{
             position: 'absolute', top: 'calc(100% + 12px)', left: 0, width: isRange ? '540px' : '280px',
-            backgroundColor: 'white', borderRadius: '16px', border: '1px solid #e2e8f0',
+            backgroundColor: 'var(--color-bg-surface)', borderRadius: '16px', border: '1px solid var(--color-border)',
             boxShadow: '0 20px 50px -12px rgba(0,0,0,0.15)', padding: '18px', zIndex: 2000,
             animation: 'popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
             transition: 'width 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
@@ -164,25 +164,25 @@ const AdvancedDateFilter = ({
           {/* Popover Header */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: '700', color: '#64748b' }}>Date</span>
+              <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--color-text-muted)' }}>Date</span>
               <div style={{ position: 'relative' }} ref={operatorRef}>
                 <button 
                   onClick={() => setIsOpDropdownOpen(!isOpDropdownOpen)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px',
-                    backgroundColor: '#eff6ff', color: '#3b82f6', border: 'none', borderRadius: '8px',
+                    backgroundColor: 'color-mix(in srgb, var(--color-primary) 8%, var(--color-bg-surface))', color: '#3b82f6', border: 'none', borderRadius: '8px',
                     fontSize: '0.8rem', fontWeight: '800', cursor: 'pointer'
                   }}
                 >
                   {operators.find(o => o.id === operator)?.label} <ChevronDown size={12} />
                 </button>
                 {isOpDropdownOpen && (
-                  <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '8px', width: '200px', backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #f1f5f9', zIndex: 2100 }}>
+                  <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '8px', width: '200px', backgroundColor: 'var(--color-bg-surface)', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid var(--color-border-light)', zIndex: 2100 }}>
                     {operators.map(op => (
                       <div 
                         key={op.id} 
                         onClick={() => { setOperator(op.id); setIsOpDropdownOpen(false); }}
-                        style={{ padding: '10px 16px', fontSize: '0.85rem', fontWeight: '600', color: operator === op.id ? '#3b82f6' : '#475569', cursor: 'pointer', backgroundColor: operator === op.id ? '#eff6ff' : 'transparent' }}
+                        style={{ padding: '10px 16px', fontSize: '0.85rem', fontWeight: '600', color: operator === op.id ? '#3b82f6' : 'var(--color-text-main)', cursor: 'pointer', backgroundColor: operator === op.id ? 'color-mix(in srgb, #3b82f6 10%, var(--color-bg-surface))' : 'transparent' }}
                       >
                         {op.label}
                       </div>
@@ -206,21 +206,21 @@ const AdvancedDateFilter = ({
                 value={localStart} 
                 onChange={(e) => handleManualEntry(e.target.value, 'start')}
                 placeholder={operator.includes('before') ? '...' : 'Start...'}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '0.8rem', fontWeight: '600', backgroundColor: '#f8fafc', color: '#1e293b', outline: 'none' }}
+                style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid var(--color-border)', fontSize: '0.8rem', fontWeight: '600', backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-main)', outline: 'none' }}
               />
-              {startDate && <X size={12} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#94a3b8' }} onClick={() => onRangeChange("", endDate)} />}
+              {startDate && <X size={12} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: 'var(--color-text-light)' }} onClick={() => onRangeChange("", endDate)} />}
             </div>
             {operator === 'between' && (
               <>
-                <div style={{ fontSize: '1rem', color: '#94a3b8' }}>-</div>
+                <div style={{ fontSize: '1rem', color: 'var(--color-text-light)' }}>-</div>
                 <div style={{ flex: 1, position: 'relative' }}>
                   <input 
                     value={localEnd}
                     onChange={(e) => handleManualEntry(e.target.value, 'end')}
                     placeholder="End..."
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid #e2e8f0', fontSize: '0.8rem', fontWeight: '600', backgroundColor: '#f8fafc', color: '#1e293b', outline: 'none' }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1.5px solid var(--color-border)', fontSize: '0.8rem', fontWeight: '600', backgroundColor: 'var(--color-bg-body)', color: 'var(--color-text-main)', outline: 'none' }}
                   />
-                  {endDate && <X size={12} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: '#94a3b8' }} onClick={() => onRangeChange(startDate, "")} />}
+                  {endDate && <X size={12} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', cursor: 'pointer', color: 'var(--color-text-light)' }} onClick={() => onRangeChange(startDate, "")} />}
                 </div>
               </>
             )}
@@ -231,14 +231,14 @@ const AdvancedDateFilter = ({
             {months.map((month, mIdx) => (
               <div key={mIdx} style={{ flex: 1 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  {mIdx === 0 && <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} style={{ padding: '6px', border: '1px solid #e2e8f0', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer' }}><ChevronLeft size={14} /></button>}
-                  <span style={{ fontSize: '0.85rem', fontWeight: '800', color: '#1e293b', textAlign: 'center', flex: 1 }}>{month.name}</span>
-                  {(mIdx === months.length - 1) && <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))} style={{ padding: '6px', border: '1px solid #e2e8f0', borderRadius: '8px', backgroundColor: 'white', cursor: 'pointer' }}><ChevronRight size={14} /></button>}
+                  {mIdx === 0 && <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} style={{ padding: '6px', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: 'color-mix(in srgb, var(--color-text-main) 10%, var(--color-bg-surface))', color: 'var(--color-text-main)', cursor: 'pointer' }}><ChevronLeft size={14} /></button>}
+                  <span style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--color-text-main)', textAlign: 'center', flex: 1 }}>{month.name}</span>
+                  {(mIdx === months.length - 1) && <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))} style={{ padding: '6px', border: '1px solid var(--color-border)', borderRadius: '8px', backgroundColor: 'color-mix(in srgb, var(--color-text-main) 10%, var(--color-bg-surface))', color: 'var(--color-text-main)', cursor: 'pointer' }}><ChevronRight size={14} /></button>}
                 </div>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', textAlign: 'center' }}>
                   {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map(d => (
-                    <span key={d} style={{ fontSize: '0.6rem', fontWeight: '800', color: '#94a3b8', paddingBottom: '8px' }}>{d}</span>
+                    <span key={d} style={{ fontSize: '0.6rem', fontWeight: '800', color: 'var(--color-text-light)', paddingBottom: '8px' }}>{d}</span>
                   ))}
                   {month.days.map((day, dIdx) => {
                     const active = isSelected(day);
@@ -250,8 +250,8 @@ const AdvancedDateFilter = ({
                         style={{
                           height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center',
                           fontSize: '0.75rem', fontWeight: active ? '800' : '600', 
-                          color: active ? 'white' : (day ? '#1e293b' : 'transparent'),
-                          backgroundColor: active ? '#3b82f6' : (ranged ? '#eff6ff' : 'transparent'),
+                          color: active ? 'white' : (day ? 'var(--color-text-main)' : 'transparent'),
+                          backgroundColor: active ? '#3b82f6' : (ranged ? 'color-mix(in srgb, #3b82f6 15%, transparent)' : 'transparent'),
                           borderRadius: '8px', cursor: day ? 'pointer' : 'default', transition: 'all 0.1s',
                           border: active ? '2px solid #3b82f6' : '2px solid transparent'
                         }}
